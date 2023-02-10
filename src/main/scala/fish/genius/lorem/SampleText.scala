@@ -11,7 +11,13 @@ object SampleText {
   private val lorem = LoremIpsum.getInstance()
 
   def locales: List[Locale] =
-    List(Locale.ENGLISH, Locale.US, Locale.FRENCH, Locale.of("nl", "BE"))
+    List(
+      Locale.ENGLISH,
+      Locale.US,
+      Locale.FRENCH,
+      Locale.GERMANY,
+      Locale.JAPANESE
+    )
 
   def locale: Locale = {
     val index = int(locales.length)
