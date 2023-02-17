@@ -10,5 +10,9 @@ class SampleImagesSpec extends AnyFlatSpec {
     SampleImages.image(500, 1000, "jpg", true, false)
     SampleImages.image(1000, 1000, "jpg", false, true)
     SampleImages.image(500, 500, "jpg", false, false)
+    (1 to 10).foreach(i => {
+      val image = SampleImages.square(400, filename = "virginie")
+      println(image)
+    })
   }
 }

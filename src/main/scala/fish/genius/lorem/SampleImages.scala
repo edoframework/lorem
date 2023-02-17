@@ -16,11 +16,22 @@ object SampleImages {
       height: Int,
       extension: String = "webp",
       grayscale: Boolean = false,
-      blur: Boolean = false
-  ): Option[File] = FileUtils.copyUrlToFile(
-    s"$baseUrl$width/$height.$extension${urlSuffix(grayscale, blur)}",
-    new File(imagesDirectory, s"${SampleText.id}.$extension")
-  )
+      blur: Boolean = false,
+      filename: String
+  ): Option[File] = {
+    val imageFile = new File(
+      imagesDirectory,
+      s"${filename}_${width}x${height}_${if (grayscale) "gray_" else "color_"}${if (blur)
+          "blur"
+        else "sharp"}.${extension}"
+    )
+    if (imageFile.canRead) Some(imageFile)
+    else
+      FileUtils.copyUrlToFile(
+        s"$baseUrl$width/$height.$extension${urlSuffix(grayscale, blur)}",
+        imageFile
+      )
+  }
 
   private def urlSuffix(grayscale: Boolean, blur: Boolean): String =
     if (grayscale && blur) "/?grayscale&blur=5"
@@ -33,16 +44,18 @@ object SampleImages {
       height: Int,
       extension: String = "webp",
       grayscale: Boolean = false,
-      blur: Boolean = false
+      blur: Boolean = false,
+      filename: String = "image"
   ): Option[File] =
-    download(width, height, extension, grayscale, blur)
+    download(width, height, extension, grayscale, blur, filename)
 
   def square(
       width: Int,
       extension: String = "webp",
       grayscale: Boolean = false,
-      blur: Boolean = false
+      blur: Boolean = false,
+      filename: String = "image"
   ): Option[File] =
-    download(width, width, extension, grayscale, blur)
+    download(width, width, extension, grayscale, blur, filename)
 
 }
