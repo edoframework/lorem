@@ -1,0 +1,199 @@
+//| repositories:
+//| - https://repo.genius.fish/releases
+//| - https://repo.genius.fish/snapshots
+//| mvnDeps:
+//| - com.goyeau::mill-scalafix::0.6.0
+//| - fish.genius::mill-release::0.4.0
+
+package build
+
+import coursier.LocalRepositories
+import coursier.core.Authentication
+import coursier.maven.MavenRepository
+import mill.*
+import mill.scalalib.*
+import mill.scalalib.publish.*
+import mill.scalalib.scalafmt.*
+import mill.scalajslib.*
+
+import com.goyeau.mill.scalafix.ScalafixModule
+import fish.genius.mill.release.GeniusFishReleaseModule
+
+// ---------------------------------------------------------------------------
+// Version catalog
+// ---------------------------------------------------------------------------
+object V {
+  val scala               = "3.8.3"
+  val scalaJS             = "1.21.0"
+  val zio                 = "2.1.26"
+  val zioJson             = "0.9.2"
+  val scalaJavaTime       = "2.6.0"
+  val scalaJsSecureRandom = "1.0.0"
+  val geniusI18n          = "1.0.0" // fish.genius::genius-i18n (Language enum)
+}
+
+// ---------------------------------------------------------------------------
+// Release module (git-tag versioning, release workflow, AI release notes)
+// ---------------------------------------------------------------------------
+object release extends GeniusFishReleaseModule
+
+// ---------------------------------------------------------------------------
+// Shared publishing settings for JVM and JS modules
+// ---------------------------------------------------------------------------
+trait GeniusFishPublishSettings extends PublishModule {
+  def publishVersion = release.gitVersion()
+
+  def pomSettings = PomSettings(
+    description = "Composable, cross-platform fake-data / Lorem Ipsum generator for Scala 3 — JVM & JS",
+    organization = "fish.genius",
+    url = "https://github.com/genius-fish/lorem",
+    licenses = Seq(License.MIT),
+    versionControl = VersionControl.github("genius-fish", "lorem"),
+    developers = Seq(
+      Developer("jlust", "Jurgen Lust", "https://genius.fish"),
+    ),
+  )
+
+  def geniusFishRepositories: Seq[MavenRepository] = {
+    val auth = for {
+      user  <- sys.env.get("REPO_USERNAME")
+      token <- sys.env.get("REPO_TOKEN")
+    } yield Authentication(user, token)
+
+    Seq(
+      MavenRepository("https://repo.genius.fish/releases", authentication = auth),
+      MavenRepository("https://repo.genius.fish/snapshots", authentication = auth),
+    )
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Base trait for JVM modules
+// ---------------------------------------------------------------------------
+trait GeniusFishModule extends ScalaModule with ScalafmtModule with ScalafixModule with GeniusFishPublishSettings {
+  def scalaVersion = V.scala
+
+  def scalacOptions = Seq(
+    "-Wunused:all",
+    "-unchecked",
+    "-deprecation",
+    "-feature",
+    "-Xmax-inlines:128",
+  )
+
+  // ivy2Local lets the build resolve locally-published Genius Fish artifacts
+  // (e.g. genius-i18n) before they are available on repo.genius.fish.
+  def repositoriesTask = Task.Anon {
+    super.repositoriesTask() ++ geniusFishRepositories ++ Seq(LocalRepositories.ivy2Local)
+  }
+
+  trait GeniusFishTests extends ScalaTests with ScalafmtModule with ScalafixModule {
+    def testFramework = "zio.test.sbt.ZTestFramework"
+
+    def forkArgs = Seq(
+      "-Xmx4G",
+      "-Xms2G",
+      "-Xss16M",
+      "-XX:+UseG1GC",
+      "-XX:MaxGCPauseMillis=200",
+    )
+
+    def mvnDeps = Seq(
+      mvn"dev.zio::zio-test:${V.zio}",
+      mvn"dev.zio::zio-test-sbt:${V.zio}",
+    )
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Base trait for Scala.js modules
+// ---------------------------------------------------------------------------
+trait GeniusFishJSModule extends ScalaJSModule with ScalafmtModule with ScalafixModule with GeniusFishPublishSettings {
+  def scalaVersion   = V.scala
+  def scalaJSVersion = V.scalaJS
+
+  def scalacOptions = Seq(
+    "-Wunused:all",
+    "-unchecked",
+    "-deprecation",
+    "-feature",
+    "-Xmax-inlines:128",
+  )
+
+  def repositoriesTask = Task.Anon {
+    super.repositoriesTask() ++ geniusFishRepositories ++ Seq(LocalRepositories.ivy2Local)
+  }
+
+  // Scala.js polyfills used by the shared sources: java.time (scala-java-time +
+  // tzdb) and java.security.SecureRandom (scalajs-java-securerandom).
+  def jsDeps = Seq(
+    mvn"io.github.cquiroz::scala-java-time::${V.scalaJavaTime}",
+    mvn"io.github.cquiroz::scala-java-time-tzdb::${V.scalaJavaTime}",
+    mvn"org.scala-js::scalajs-java-securerandom::${V.scalaJsSecureRandom}".withDottyCompat(V.scala),
+  )
+
+  trait GeniusFishJSTests extends ScalaJSTests with ScalafmtModule with ScalafixModule {
+    def testFramework = "zio.test.sbt.ZTestFramework"
+
+    def mvnDeps = Seq(
+      mvn"dev.zio::zio-test::${V.zio}",
+      mvn"dev.zio::zio-test-sbt::${V.zio}",
+    )
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Workspace root for resolving cross-platform source paths
+// ---------------------------------------------------------------------------
+val wsRoot = os.Path(sys.env("MILL_WORKSPACE_ROOT"))
+
+// ---------------------------------------------------------------------------
+// Module: lorem (cross-platform JVM + JS)
+//   shared sources compile on both platforms; jvm/ and js/ hold the
+//   platform-specific resource loaders (JVM reads name lists from the
+//   classpath; JS embeds them). Depends on genius-i18n for the Language enum.
+// ---------------------------------------------------------------------------
+object lorem extends Module {
+  object jvm extends GeniusFishModule {
+    def artifactName = "genius-lorem"
+
+    def sources = Task.Sources(
+      wsRoot / "shared" / "src",
+      wsRoot / "jvm" / "src",
+    )
+    def resources = Task.Sources(
+      wsRoot / "shared" / "resources",
+    )
+
+    def mvnDeps = Seq(
+      mvn"dev.zio::zio-json:${V.zioJson}",
+      mvn"fish.genius::genius-i18n:${V.geniusI18n}",
+    )
+
+    object test extends GeniusFishTests {
+      def sources = Task.Sources(
+        wsRoot / "shared" / "test" / "src",
+      )
+    }
+  }
+
+  object js extends GeniusFishJSModule {
+    def artifactName = "genius-lorem"
+
+    def sources = Task.Sources(
+      wsRoot / "shared" / "src",
+      wsRoot / "js" / "src",
+    )
+
+    def mvnDeps = Seq(
+      mvn"dev.zio::zio-json::${V.zioJson}",
+      mvn"fish.genius::genius-i18n::${V.geniusI18n}",
+    ) ++ jsDeps
+
+    object test extends GeniusFishJSTests {
+      def sources = Task.Sources(
+        wsRoot / "shared" / "test" / "src",
+      )
+    }
+  }
+}
