@@ -25,6 +25,11 @@ object LoremIpsumSpec extends ZIOSpecDefault:
         val result = LoremIpsum.language
         assertTrue(LoremIpsum.languages.contains(result))
       },
+      test("language reaches every language, the first one included") {
+        val langs = LoremIpsum.languages
+        val drawn = (1 to langs.length * 200).map(_ => LoremIpsum.language).toSet
+        assertTrue(langs.nonEmpty, drawn == langs.toSet)
+      },
     ),
     suite("Random number generation")(
       test("int returns a positive number") {
@@ -34,6 +39,21 @@ object LoremIpsumSpec extends ZIOSpecDefault:
       test("int never returns zero") {
         val results = (1 to 20).map(_ => LoremIpsum.int(10))
         assertTrue(results.forall(_ > 0))
+      },
+      test("int reaches every value in [1, bound], bound included") {
+        val drawn = (1 to 600).map(_ => LoremIpsum.int(3))
+        assertTrue(drawn.toSet == Set(1, 2, 3))
+      },
+      test("int(2) returns 1 and 2 about equally often") {
+        val ones = (1 to 2000).count(_ => LoremIpsum.int(2) == 1)
+        assertTrue(ones > 800 && ones < 1200)
+      },
+      test("int(1) is always 1") {
+        assertTrue((1 to 50).forall(_ => LoremIpsum.int(1) == 1))
+      },
+      test("long reaches every value in [1, bound], bound included") {
+        val drawn = (1 to 600).map(_ => LoremIpsum.long(3))
+        assertTrue(drawn.toSet == Set(1L, 2L, 3L))
       },
       test("long returns a positive number") {
         val result = LoremIpsum.long(100)
@@ -63,6 +83,10 @@ object LoremIpsumSpec extends ZIOSpecDefault:
       test("times generates correct number of items") {
         val result = LoremIpsum.times(5, i => i * 2)
         assertTrue(result.length <= 5 && result.length > 0)
+      },
+      test("times returns between one and bound items, bound included") {
+        val lengths = (1 to 600).map(_ => LoremIpsum.times(3, identity).length)
+        assertTrue(lengths.toSet == Set(1, 2, 3))
       },
       test("times applies function to each index") {
         val result = LoremIpsum.times(3, i => i)
@@ -139,6 +163,10 @@ object LoremIpsumSpec extends ZIOSpecDefault:
           result.contains("."),
         )
       },
+      test("email and url use only the reserved .example top-level domain") {
+        val hosts = (1 to 500).flatMap(_ => Seq(LoremIpsum.email.split("@").last, LoremIpsum.url.stripPrefix("https://")))
+        assertTrue(hosts.nonEmpty, hosts.forall(_.endsWith(".example")))
+      },
       test("url generates valid URL structure") {
         val result = LoremIpsum.url
         assertTrue(
@@ -163,6 +191,11 @@ object LoremIpsumSpec extends ZIOSpecDefault:
       test("lastName generates a non-empty name") {
         val result = LoremIpsum.lastName
         assertTrue(result.nonEmpty)
+      },
+      test("name is a first name, a space and a last name") {
+        val result = LoremIpsum.name
+        val first  = result.takeWhile(_ != ' ')
+        assertTrue(first.nonEmpty, result.length > first.length + 1, result(first.length) == ' ')
       },
       test("name generates full name with space") {
         val result = LoremIpsum.name
@@ -189,6 +222,12 @@ object LoremIpsumSpec extends ZIOSpecDefault:
           result.forall(_.isDigit),
         )
       },
+      test("zip codes and phone numbers use every digit, 0 and 9 included") {
+        val zipDigits   = (1 to 300).flatMap(_ => LoremIpsum.zipCode).toSet
+        val phoneDigits = (1 to 300).flatMap(_ => LoremIpsum.phone.stripPrefix("+32")).toSet
+        val all         = ('0' to '9').toSet
+        assertTrue(zipDigits == all, phoneDigits == all)
+      },
       test("address generates complete address") {
         val result = LoremIpsum.address
         assertTrue(
@@ -208,6 +247,14 @@ object LoremIpsumSpec extends ZIOSpecDefault:
           result.getYear > 0,
           result.getMonthValue >= 1 && result.getMonthValue <= 12,
           result.getDayOfMonth >= 1 && result.getDayOfMonth <= 31,
+        )
+      },
+      test("localDate reaches December and the 28th") {
+        val dates = (1 to 3000).map(_ => LoremIpsum.localDate)
+        assertTrue(
+          dates.exists(_.getMonthValue == 12),
+          dates.exists(_.getDayOfMonth == 28),
+          dates.forall(d => d.getYear >= 1 && d.getYear <= 3000 && d.getDayOfMonth <= 28),
         )
       },
       test("today returns current date") {

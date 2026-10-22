@@ -1,5 +1,10 @@
 package dev.taihei.lorem.sources
 
+/**
+ * Internal: a word list shipped with this library, not used by [[dev.taihei.lorem.LoremIpsum]]. Not part
+ * of the public API and not covered by the compatibility promise; it becomes private in the next major release.
+ * Use [[dev.taihei.lorem.LoremIpsum]] instead.
+ */
 object StateAbbreviations extends SampleWordCollection:
 
   override lazy val words: List[String] = List(
