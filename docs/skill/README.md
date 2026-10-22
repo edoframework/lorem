@@ -1,4 +1,4 @@
-# genius-lorem skill docs (source of truth)
+# Edo Framework lorem skill docs (source of truth)
 
 This directory is the **canonical source** for the `library-genius-lorem` skill
 shipped by the `gf-standards` Claude Code plugin. The files here are authored and

@@ -1,6 +1,6 @@
 # internals — randomness, deps, cross-platform & build
 
-Package `genius.lorem`.
+Package `com.edoframework.lorem`.
 
 ## Randomness
 
@@ -11,17 +11,13 @@ All generators draw from a `java.security.SecureRandom`. Consequences:
 - `int(bound)` / `long(bound)` return values in `[1, bound]` — **never 0**.
 - `double(bound)` is in `[0, bound)`.
 
-## The genius-i18n dependency
+## The edo-i18n dependency
 
-`LoremIpsum.languages` / `LoremIpsum.language` return `genius.i18n.Language`
-values — the single tie to the [`genius-i18n`](https://github.com/genius-fish/i18n)
-library. The build depends on `fish.genius::genius-i18n` (JVM) /
-`fish.genius::genius-i18n_sjs1` (JS), pinned in the `V.geniusI18n` version in
+`LoremIpsum.languages` / `LoremIpsum.language` return `com.edoframework.i18n.Language`
+values — the single tie to the [edo-i18n](https://github.com/edoframework/i18n)
+library. The build depends on `com.edoframework::edo-i18n` (JVM) /
+`com.edoframework::edo-i18n_sjs1` (JS) from Maven Central, pinned in `V.edoI18n` in
 `build.mill`.
-
-Resolution note: the build adds the **local ivy repository** to its resolvers, so
-`make publishLocal` in the `i18n` repo makes the dependency available locally. For
-CI and external consumers, `genius-i18n` must be published to `repo.genius.fish`.
 
 ## Cross-platform name lists (ResourceLoader)
 
@@ -31,7 +27,7 @@ male names, female names, surnames — are JSON, loaded through a per-platform
 
 | Platform | How the JSON is provided |
 | --- | --- |
-| **JVM** (`jvm/src`) | `getClass.getResourceAsStream(...)` reads `shared/resources/genius/lorem/sources/*.json` from the classpath |
+| **JVM** (`jvm/src`) | `getClass.getResourceAsStream(...)` reads `shared/resources/com/edoframework/lorem/sources/*.json` from the classpath |
 | **Scala.js** (`js/src`) | the JSON is embedded as string literals in the JS `ResourceLoader` (the browser can't read the filesystem) |
 
 Both fail fast (throw) on a missing/malformed resource — this is build-time data,
@@ -49,15 +45,15 @@ the `js` module's deps. Anything genuinely platform-specific goes in `jvm/src` o
 ## Build & layout
 
 ```
-shared/src/genius/lorem/           LoremIpsum, SampleImages, sources/* (data)
-shared/resources/genius/lorem/sources/  male-names.json, female-names.json, surnames.json
-jvm/src/genius/lorem/sources/      ResourceLoader (classpath)
-js/src/genius/lorem/sources/       ResourceLoader (embedded)
-shared/test/src/genius/lorem/      LoremIpsumSpec (runs on both platforms)
+shared/src/com/edoframework/lorem/                LoremIpsum, SampleImages, sources/* (data)
+shared/resources/com/edoframework/lorem/sources/  male-names.json, female-names.json, surnames.json
+jvm/src/com/edoframework/lorem/sources/           ResourceLoader (classpath)
+js/src/com/edoframework/lorem/sources/            ResourceLoader (embedded)
+shared/test/src/com/edoframework/lorem/           LoremIpsumSpec (runs on both platforms)
 ```
 
 - `make compile` / `make test` cover both platforms (`./mill __.compile`,
   `./mill __.test.testForked` → `lorem.jvm` and `lorem.js`; JS tests run on Node).
 - Single-platform: `./mill lorem.jvm.test` or `./mill lorem.js.test`.
-- Released via the mill-release flow (`make release-prepare TYPE=…` →
-  `make release-finalize`), same as the other Genius Fish libraries.
+- Released to Maven Central from the git tag (`make release-prepare TYPE=…` →
+  `make release-finalize`), the same as every Edo Framework library.

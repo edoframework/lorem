@@ -1,0 +1,11 @@
+Edo Framework lorem
+Copyright 2026 Innovenso BV
+
+This product is developed by Innovenso BV (https://innovenso.com) as part of
+the Edo Framework (https://edoframework.com).
+
+Versions up to and including 2.0.0 were published as fish.genius::genius-lorem
+under the MIT License, and remain available under it.
+
+The text generator uses the "Lorem ipsum" passage, derived from Cicero's
+De finibus bonorum et malorum (45 BC), which is in the public domain.

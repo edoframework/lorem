@@ -1,76 +1,107 @@
-//| repositories:
-//| - https://repo.genius.fish/releases
-//| - https://repo.genius.fish/snapshots
 //| mvnDeps:
-//| - com.goyeau::mill-scalafix::0.6.0
-//| - fish.genius::mill-release::0.5.0
+//| - com.goyeau::mill-scalafix::0.6.2
+//| - com.github.lolgab::mill-mima::0.2.2
 
 package build
 
-import coursier.LocalRepositories
-import coursier.core.Authentication
-import coursier.maven.MavenRepository
 import mill.*
 import mill.scalalib.*
 import mill.scalalib.publish.*
 import mill.scalalib.scalafmt.*
 import mill.scalajslib.*
 
+import com.github.lolgab.mill.mima.Mima
 import com.goyeau.mill.scalafix.ScalafixModule
-import fish.genius.mill.release.GeniusFishReleaseModule
 
 // ---------------------------------------------------------------------------
 // Version catalog
 // ---------------------------------------------------------------------------
 object V {
-  val scala               = "3.8.3"
-  val scalaJS             = "1.21.0"
-  val zio                 = "2.1.26"
-  val zioJson             = "0.9.2"
-  val scalaJavaTime       = "2.6.0"
+  val scala               = "3.9.0"
+  val scalaJS             = "1.22.0"
+  val zio                 = "2.1.27"
+  val zioJson             = "1.1.1"
+  val scalaJavaTime       = "2.8.0"
   val scalaJsSecureRandom = "1.0.0"
-  val geniusI18n          = "1.0.0" // fish.genius::genius-i18n (Language enum)
+  val edoI18n             = "3.0.0" // com.edoframework::edo-i18n (Language)
 }
 
 // ---------------------------------------------------------------------------
-// Release module (git-tag versioning, release workflow, AI release notes)
+// Version from git: an exact v-tag on a clean tree is the release, anything else
+// a SNAPSHOT of the last tag. Untracked files do not count. A Task.Input, so a
+// new commit, tag or edit is seen without restarting the Mill daemon. The
+// release itself is the Makefile's (release-prepare / release-finalize).
 // ---------------------------------------------------------------------------
-object release extends GeniusFishReleaseModule
+object release extends Module {
+  def gitVersion = Task.Input {
+    val root     = os.Path(sys.env("MILL_WORKSPACE_ROOT"))
+    def git(args: String*) = os.proc("git", args).call(cwd = root, check = false)
+    val tag      = git("describe", "--tags", "--abbrev=0", "--match", "v[0-9]*")
+    val version  = if (tag.exitCode == 0) tag.out.trim().stripPrefix("v") else "0.0.0"
+    val exactTag = git("describe", "--tags", "--exact-match", "--match", "v[0-9]*").exitCode == 0
+    val clean    = git("status", "--porcelain").out.text().linesIterator.forall(_.startsWith("??"))
+    if (exactTag && clean) version else s"$version-SNAPSHOT"
+  }
+
+  // The first release under com.edoframework. Older tags are genius-lorem, under other coordinates,
+  // so there is nothing on Central to compare them with.
+  val firstRelease = "3.0.0"
+
+  // The release MiMa compares with: the newest v-tag reachable from HEAD, none before
+  // firstRelease. MIMA_BASELINE overrides it: `none` for a major, which may break (release-prepare
+  // TYPE=major sets it), or a version.
+  def mimaBaseline = Task.Input {
+    val root = os.Path(sys.env("MILL_WORKSPACE_ROOT"))
+    def numbers(v: String) = v.split('.').toSeq.map(_.toIntOption.getOrElse(0))
+    Task.env.get("MIMA_BASELINE").map(_.trim).filter(_.nonEmpty) match {
+      case Some("none") => None
+      case Some(v)      => Some(v)
+      case None         =>
+        val tag = os
+          .proc("git", "describe", "--tags", "--abbrev=0", "--match", "v[0-9]*")
+          .call(cwd = root, check = false)
+        Option
+          .when(tag.exitCode == 0)(tag.out.trim().stripPrefix("v"))
+          .filter(v => Ordering.Implicits.seqOrdering[Seq, Int].gteq(numbers(v), numbers(firstRelease)))
+    }
+  }
+}
 
 // ---------------------------------------------------------------------------
-// Shared publishing settings for JVM and JS modules
+// Binary compatibility: MiMa compares the artifact with the baseline release on Central and
+// fails on a break (`make mima`, part of validate). No baseline, nothing to compare.
 // ---------------------------------------------------------------------------
-trait GeniusFishPublishSettings extends PublishModule {
+trait EdoMima extends Mima with PublishModule {
+  def mimaPreviousVersions = Task(release.mimaBaseline().toSeq)
+  // The plugin's default fails without a version; no baseline here means nothing to compare.
+  def mimaPreviousArtifacts = Task {
+    mimaPreviousVersions().map(v => mvn"${pomSettings().organization}:${artifactId()}:$v")
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Shared publishing settings for JVM and JS modules: what Maven Central
+// validates (name, description, url, licence, developer, scm, sources, docs).
+// ---------------------------------------------------------------------------
+trait EdoPublishSettings extends PublishModule {
   def publishVersion = release.gitVersion()
 
   def pomSettings = PomSettings(
-    description = "Composable, cross-platform fake-data / Lorem Ipsum generator for Scala 3 — JVM & JS",
-    organization = "fish.genius",
-    url = "https://github.com/genius-fish/lorem",
-    licenses = Seq(License.MIT),
-    versionControl = VersionControl.github("genius-fish", "lorem"),
+    description = "Composable, cross-platform fake-data and Lorem Ipsum generator for Scala 3; JVM & JS",
+    organization = "com.edoframework",
+    url = "https://github.com/edoframework/lorem",
+    licenses = Seq(License.`Apache-2.0`),
+    versionControl = VersionControl.github("edoframework", "lorem"),
     developers = Seq(
-      Developer("jlust", "Jurgen Lust", "https://genius.fish"),
+      Developer("innovenso", "Innovenso BV", "https://edoframework.com", Some("Innovenso BV"), Some("https://innovenso.com")),
     ),
   )
-
-  def geniusFishRepositories: Seq[MavenRepository] = {
-    val auth = for {
-      user  <- sys.env.get("REPO_USERNAME")
-      token <- sys.env.get("REPO_TOKEN")
-    } yield Authentication(user, token)
-
-    Seq(
-      MavenRepository("https://repo.genius.fish/releases", authentication = auth),
-      MavenRepository("https://repo.genius.fish/snapshots", authentication = auth),
-    )
-  }
 }
 
 // ---------------------------------------------------------------------------
 // Base trait for JVM modules
 // ---------------------------------------------------------------------------
-trait GeniusFishModule extends ScalaModule with ScalafmtModule with ScalafixModule with GeniusFishPublishSettings {
+trait EdoModule extends ScalaModule with ScalafmtModule with ScalafixModule with EdoPublishSettings with EdoMima {
   def scalaVersion = V.scala
 
   def scalacOptions = Seq(
@@ -81,13 +112,7 @@ trait GeniusFishModule extends ScalaModule with ScalafmtModule with ScalafixModu
     "-Xmax-inlines:128",
   )
 
-  // ivy2Local lets the build resolve locally-published Genius Fish artifacts
-  // (e.g. genius-i18n) before they are available on repo.genius.fish.
-  def repositoriesTask = Task.Anon {
-    super.repositoriesTask() ++ geniusFishRepositories ++ Seq(LocalRepositories.ivy2Local)
-  }
-
-  trait GeniusFishTests extends ScalaTests with ScalafmtModule with ScalafixModule {
+  trait EdoTests extends ScalaTests with ScalafmtModule with ScalafixModule {
     def testFramework = "zio.test.sbt.ZTestFramework"
 
     def forkArgs = Seq(
@@ -108,7 +133,7 @@ trait GeniusFishModule extends ScalaModule with ScalafmtModule with ScalafixModu
 // ---------------------------------------------------------------------------
 // Base trait for Scala.js modules
 // ---------------------------------------------------------------------------
-trait GeniusFishJSModule extends ScalaJSModule with ScalafmtModule with ScalafixModule with GeniusFishPublishSettings {
+trait EdoJSModule extends ScalaJSModule with ScalafmtModule with ScalafixModule with EdoPublishSettings with EdoMima {
   def scalaVersion   = V.scala
   def scalaJSVersion = V.scalaJS
 
@@ -120,10 +145,6 @@ trait GeniusFishJSModule extends ScalaJSModule with ScalafmtModule with Scalafix
     "-Xmax-inlines:128",
   )
 
-  def repositoriesTask = Task.Anon {
-    super.repositoriesTask() ++ geniusFishRepositories ++ Seq(LocalRepositories.ivy2Local)
-  }
-
   // Scala.js polyfills used by the shared sources: java.time (scala-java-time +
   // tzdb) and java.security.SecureRandom (scalajs-java-securerandom).
   def jsDeps = Seq(
@@ -132,7 +153,7 @@ trait GeniusFishJSModule extends ScalaJSModule with ScalafmtModule with Scalafix
     mvn"org.scala-js::scalajs-java-securerandom::${V.scalaJsSecureRandom}".withDottyCompat(V.scala),
   )
 
-  trait GeniusFishJSTests extends ScalaJSTests with ScalafmtModule with ScalafixModule {
+  trait EdoJSTests extends ScalaJSTests with ScalafmtModule with ScalafixModule {
     def testFramework = "zio.test.sbt.ZTestFramework"
 
     def mvnDeps = Seq(
@@ -150,12 +171,12 @@ val wsRoot = os.Path(sys.env("MILL_WORKSPACE_ROOT"))
 // ---------------------------------------------------------------------------
 // Module: lorem (cross-platform JVM + JS)
 //   shared sources compile on both platforms; jvm/ and js/ hold the
-//   platform-specific resource loaders (JVM reads name lists from the
-//   classpath; JS embeds them). Depends on genius-i18n for the Language enum.
+//   platform-specific resource loaders (the JVM reads the name lists from the
+//   classpath; JS embeds them). Depends on edo-i18n for Language.
 // ---------------------------------------------------------------------------
 object lorem extends Module {
-  object jvm extends GeniusFishModule {
-    def artifactName = "genius-lorem"
+  object jvm extends EdoModule {
+    def artifactName = "edo-lorem"
 
     def sources = Task.Sources(
       wsRoot / "shared" / "src",
@@ -167,18 +188,18 @@ object lorem extends Module {
 
     def mvnDeps = Seq(
       mvn"dev.zio::zio-json:${V.zioJson}",
-      mvn"fish.genius::genius-i18n:${V.geniusI18n}",
+      mvn"com.edoframework::edo-i18n:${V.edoI18n}",
     )
 
-    object test extends GeniusFishTests {
+    object test extends EdoTests {
       def sources = Task.Sources(
         wsRoot / "shared" / "test" / "src",
       )
     }
   }
 
-  object js extends GeniusFishJSModule {
-    def artifactName = "genius-lorem"
+  object js extends EdoJSModule {
+    def artifactName = "edo-lorem"
 
     def sources = Task.Sources(
       wsRoot / "shared" / "src",
@@ -187,10 +208,10 @@ object lorem extends Module {
 
     def mvnDeps = Seq(
       mvn"dev.zio::zio-json::${V.zioJson}",
-      mvn"fish.genius::genius-i18n::${V.geniusI18n}",
+      mvn"com.edoframework::edo-i18n::${V.edoI18n}",
     ) ++ jsDeps
 
-    object test extends GeniusFishJSTests {
+    object test extends EdoJSTests {
       def sources = Task.Sources(
         wsRoot / "shared" / "test" / "src",
       )

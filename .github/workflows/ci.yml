@@ -1,4 +1,4 @@
-name: genius-lorem CI
+name: Edo Framework lorem CI
 
 on:
   push:
@@ -9,39 +9,39 @@ on:
       - main
   workflow_dispatch:
 
+# Read-only: CI builds and tests, it publishes nothing.
+permissions:
+  contents: read
+
 env:
   JAVA_VERSION: '25'
   NODE_VERSION: '20'
-  # Credentials for the private Genius Fish Maven repo (repo.genius.fish), used to
-  # bootstrap the mill-release plugin. Empty when the secrets are unset, in which
-  # case the credentials step below is skipped.
-  REPO_USERNAME: ${{ secrets.REPO_USERNAME }}
-  REPO_TOKEN: ${{ secrets.REPO_TOKEN }}
+  # Everything resolves from Maven Central: the build needs no credentials.
 
 jobs:
   validate:
-    name: Validate (Format, Lint, Compile, Test — JVM & JS)
+    name: Validate (Format, Lint, Compile, Test, MiMa — JVM & JS)
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
         with:
           distribution: 'temurin'
           java-version: ${{ env.JAVA_VERSION }}
 
       - name: Setup Node (for Scala.js tests)
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: Cache Mill and dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
             ~/.cache/mill
@@ -50,16 +50,6 @@ jobs:
           key: mill-${{ runner.os }}-${{ hashFiles('build.mill', '.mill-version') }}
           restore-keys: |
             mill-${{ runner.os }}-
-
-      # Authenticate coursier to repo.genius.fish so Mill can fetch the
-      # fish.genius::mill-release plugin during build bootstrap. Skipped when the
-      # REPO_USERNAME/REPO_TOKEN secrets are not set.
-      - name: Configure coursier credentials (repo.genius.fish)
-        if: ${{ env.REPO_USERNAME != '' }}
-        run: |
-          mkdir -p ~/.config/coursier
-          printf 'genius.host=repo.genius.fish\ngenius.username=%s\ngenius.password=%s\ngenius.auto=true\n' \
-            "$REPO_USERNAME" "$REPO_TOKEN" > ~/.config/coursier/credentials.properties
 
       - name: Check formatting
         run: ./mill __.checkFormat
@@ -72,3 +62,7 @@ jobs:
 
       - name: Run all tests (JVM + JS)
         run: ./mill __.test.testForked
+
+      # Against the newest v-tag (fetch-depth 0 brings the tags), as make validate does.
+      - name: Check binary compatibility (MiMa)
+        run: make mima
