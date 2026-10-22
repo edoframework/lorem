@@ -1,37 +1,37 @@
-# Edo Framework lorem
+# Taihei Framework lorem
 
 A composable, cross-platform **fake-data / Lorem Ipsum generator** for Scala 3:
 filler text, names, emails, addresses, dates, files, ids, and sample images.
 Cross-compiled for the **JVM and Scala.js**.
 
-Part of the [Edo Framework](https://edoframework.com), the open-source Scala 3
-libraries from Innovenso. The package is `com.edoframework.lorem`.
+Part of the [Taihei Framework](https://taihei.dev), the open-source Scala 3
+libraries from Innovenso. The package is `dev.taihei.lorem`.
 
 ## Modules
 
-Published on Maven Central under `com.edoframework`:
+Published on Maven Central under `dev.taihei`:
 
-| Artifact          | Platform | Notes                                          |
-| ----------------- | -------- | ---------------------------------------------- |
-| `edo-lorem`       | JVM      | Name lists loaded from classpath resources.    |
-| `edo-lorem_sjs1`  | Scala.js | Name lists embedded; runs in the browser/Node. |
+| Artifact            | Platform | Notes                                          |
+| ------------------- | -------- | ---------------------------------------------- |
+| `taihei-lorem`      | JVM      | Name lists loaded from classpath resources.    |
+| `taihei-lorem_sjs1` | Scala.js | Name lists embedded; runs in the browser/Node. |
 
 ```scala
-mvn"com.edoframework::edo-lorem:3.0.0"      // Mill, JVM
-mvn"com.edoframework::edo-lorem::3.0.0"     // Mill, Scala.js
-"com.edoframework" %%% "edo-lorem" % "3.0.0" // sbt
+mvn"dev.taihei::taihei-lorem:4.0.0"      // Mill, JVM
+mvn"dev.taihei::taihei-lorem::4.0.0"     // Mill, Scala.js
+"dev.taihei" %%% "taihei-lorem" % "4.0.0" // sbt
 ```
 
 `shared/` holds the generator and data; `jvm/` and `js/` carry only the
 platform-specific resource loader. Depends on
-[edo-i18n](https://github.com/edoframework/i18n) for `Language`.
+[taihei-i18n](https://github.com/taiheiframework/i18n) for `Language`.
 
 ## Stack
 
 - Mill 1.3.1
 - Scala 3.9.0 (LTS) · Scala.js 1.22.0
 - ZIO 2.1.27 (`zio-json` 1.1, `zio-test`)
-- `com.edoframework::edo-i18n` 3.0.0 · scala-java-time 2.8 and scalajs-java-securerandom (JS)
+- `dev.taihei::taihei-i18n` 4.0.0 · scala-java-time 2.8 and scalajs-java-securerandom (JS)
 
 Everything resolves from Maven Central; the build needs no credentials.
 
@@ -63,25 +63,26 @@ make publish-dry-run                           # the signed bundle, written to o
 Publishing reads the Central Portal user token and the release key from
 `~/.edo-release.env` or the environment (`MILL_SONATYPE_USERNAME`,
 `MILL_SONATYPE_PASSWORD`, `MILL_PGP_SECRET_BASE64`, `MILL_PGP_PASSPHRASE`).
-Releases are signed by `Edo Framework Releases <releases@edoframework.com>`,
+Releases are signed by the Taihei Framework release key,
 fingerprint `5026 B299 6DDB 697E C463  0BCF 14A7 33E2 A507 702F`.
 
-## Migrating from genius-lorem
+## Coming from edo-lorem 3.0.0 or genius-lorem
 
-3.0.0 is the API of `fish.genius::genius-lorem:2.0.0` under its new name:
+4.0.0 has the API of `com.edoframework::edo-lorem:3.0.0` under the library's new name:
 
-- the dependency is `com.edoframework::edo-lorem`;
-- the package is `com.edoframework.lorem`: replace `genius.lorem` in your imports;
-- `LoremIpsum.language` and `LoremIpsum.languages` return `com.edoframework.i18n.Language`
-  (edo-i18n 3.0.0) instead of `genius.i18n.Language`;
-- it is compiled with Scala 3.9 (LTS), so your build needs Scala 3.9 or later;
-- it brings `zio-json` 1.1 instead of 0.9;
-- the licence is Apache 2.0.
+- the dependency is `dev.taihei::taihei-lorem`;
+- the package is `dev.taihei.lorem`: replace `com.edoframework.lorem` in your imports;
+- `LoremIpsum.language` and `LoremIpsum.languages` return `dev.taihei.i18n.Language`
+  (taihei-i18n 4.0.0).
+
+Coming from `fish.genius::genius-lorem:2.0.0`, replace `genius.lorem` and `genius.i18n`
+instead. 3.0.0 also moved to Scala 3.9 (LTS), so your build needs Scala 3.9 or later, to
+`zio-json` 1.1 instead of 0.9, and to the Apache License 2.0.
 
 ## Quick start
 
 ```scala
-import com.edoframework.lorem.LoremIpsum
+import dev.taihei.lorem.LoremIpsum
 
 LoremIpsum.name          // "Olivia Hernandez"
 LoremIpsum.email         // "olivia.hernandez@brightwavehub.com"
@@ -105,12 +106,12 @@ Highlights by category:
 - **Images** — `SampleImages.landscape`, `SampleImages.portrait` (base64 PNGs)
 
 City and country names are international (native scripts). `LoremIpsum.language`
-returns a random `com.edoframework.i18n.Language`.
+returns a random `dev.taihei.i18n.Language`.
 
 ## Testing
 
 ```scala
-import com.edoframework.lorem.LoremIpsum
+import dev.taihei.lorem.LoremIpsum
 import zio.test.*
 
 assertTrue(

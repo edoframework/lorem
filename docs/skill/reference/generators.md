@@ -1,6 +1,6 @@
 # generators — the LoremIpsum catalog
 
-Package `com.edoframework.lorem`. `LoremIpsum` is a single object; every member is a
+Package `dev.taihei.lorem`. `LoremIpsum` is a single object; every member is a
 generator returning a fresh random value per call.
 
 ## Text
@@ -72,7 +72,7 @@ generator returning a fresh random value per call.
 | `long(bound: Int): Long` | random long in `[1, bound]` |
 | `double(bound: Double): Double` | random double in `[0, bound)` |
 | `times[A](bound: Int, f: Int => A): List[A]` | apply `f` `bound` times → list |
-| `languages: Array[Language]` / `language: Language` | the edo-i18n languages |
+| `languages: Array[Language]` / `language: Language` | the taihei-i18n languages |
 
 ## Sample images
 
@@ -86,7 +86,7 @@ generator returning a fresh random value per call.
 ## Usage
 
 ```scala
-import com.edoframework.lorem.LoremIpsum
+import dev.taihei.lorem.LoremIpsum
 
 // a fake person + contact
 val person  = LoremIpsum.name                 // "Olivia Hernandez"

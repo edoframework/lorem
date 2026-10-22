@@ -1,9 +1,9 @@
 # CLAUDE.md
 
-Guidance for Claude Code in this repository: **Edo Framework lorem** (`com.edoframework::edo-lorem`),
+Guidance for Claude Code in this repository: **Taihei Framework lorem** (`dev.taihei::taihei-lorem`),
 a cross-platform fake-data and Lorem Ipsum generator for Scala 3 on the JVM and Scala.js. Part of
-the Edo Framework; the family's rules come from the parent folder's `CLAUDE.md` when this repo is
-checked out under `~/Projects/Edo`.
+the Taihei Framework; the family's rules come from the parent folder's `CLAUDE.md` when this repo is
+checked out under `~/Projects/Taihei`.
 
 ## Commands
 
@@ -18,9 +18,9 @@ make release-finalize  # publishes to Maven Central: only with the maintainer's 
 
 ## Layout
 
-- `shared/src/com/edoframework/lorem/`: `LoremIpsum`, `SampleImages`, and the word lists in
+- `shared/src/dev/taihei/lorem/`: `LoremIpsum`, `SampleImages`, and the word lists in
   `sources/`.
-- `shared/resources/com/edoframework/lorem/sources/`: the three JSON name lists, read from the
+- `shared/resources/dev/taihei/lorem/sources/`: the three JSON name lists, read from the
   classpath on the JVM.
 - `jvm/src/…` and `js/src/…`: the platform `ResourceLoader`; the JS one embeds the same JSON, so
   a change to a list is made in both places.
@@ -33,8 +33,8 @@ make release-finalize  # publishes to Maven Central: only with the maintainer's 
 - The public API follows semantic versioning; a break is a major release with a migration section
   in the README.
 - Every dependency comes from Maven Central under an Apache-compatible licence; the build needs no
-  credentials. edo-i18n is pinned in `V.edoI18n` and released first.
+  credentials. taihei-i18n is pinned in `V.taiheiI18n` and released first.
 - Data in the lists is generic (common names, places, MIME types): nothing taken from a client or a
   person.
-- Work is tracked in Jira project EDO; commits are `EDO-12: subject` with a body that explains the
+- Work is tracked in Jira project TAIHEI; commits are `TAIHEI-12: subject` with a body that explains the
   change to a reader without access to the ticket.
