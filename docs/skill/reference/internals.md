@@ -7,7 +7,8 @@ Package `dev.taihei.lorem`.
 All generators draw from a `java.security.SecureRandom`. Consequences:
 
 - **No seeding** — output is not reproducible across runs. Don't assert exact
-  values in tests; assert on shape (`email.contains("@")`, two-part `name`, etc.).
+  values in tests; assert on shape (`email.contains("@")`, `name.contains(" ")`,
+  etc.). Don't count the words of a `name`: a last name can have spaces.
 - `int(bound)` / `long(bound)` return values in `[1, bound]`, each equally likely — **never 0**
   (before 4.0.1 they never returned `bound` and returned 1 twice as often).
 - `today`, `yesterday` and `tomorrow` are not random: they follow the UTC date.
