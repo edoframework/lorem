@@ -37,7 +37,7 @@ loaded per platform (classpath on the JVM, embedded on JS).
 import dev.taihei.lorem.LoremIpsum
 
 LoremIpsum.name        // "Olivia Hernandez"
-LoremIpsum.email       // "olivia.hernandez@brightwavehub.com"
+LoremIpsum.email       // "olivia.hernandez@brightwavehub.example"
 LoremIpsum.paragraph   // a paragraph of lorem filler
 LoremIpsum.localDate   // a random java.time.LocalDate
 ```

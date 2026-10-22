@@ -17,9 +17,10 @@ Published on Maven Central under `dev.taihei`:
 | `taihei-lorem_sjs1` | Scala.js | Name lists embedded; runs in the browser/Node. |
 
 ```scala
-mvn"dev.taihei::taihei-lorem:4.0.0"      // Mill, JVM
-mvn"dev.taihei::taihei-lorem::4.0.0"     // Mill, Scala.js
-"dev.taihei" %%% "taihei-lorem" % "4.0.0" // sbt
+mvn"dev.taihei::taihei-lorem:4.0.0"       // Mill, JVM
+mvn"dev.taihei::taihei-lorem::4.0.0"      // Mill, Scala.js
+"dev.taihei" %% "taihei-lorem" % "4.0.0"  // sbt, JVM
+"dev.taihei" %%% "taihei-lorem" % "4.0.0" // sbt, Scala.js (sbt-scalajs or sbt-crossproject)
 ```
 
 `shared/` holds the generator and data; `jvm/` and `js/` carry only the
@@ -61,7 +62,9 @@ make publish-dry-run                           # the signed bundle, written to o
 ```
 
 Publishing reads the Central Portal user token and the release key from
-`~/.edo-release.env` or the environment (`MILL_SONATYPE_USERNAME`,
+`~/.edo-release.env` (a name from the Edo Framework days, kept because the
+maintainers' workstations write it for every library; `RELEASE_ENV=…`
+points elsewhere) or the environment (`MILL_SONATYPE_USERNAME`,
 `MILL_SONATYPE_PASSWORD`, `MILL_PGP_SECRET_BASE64`, `MILL_PGP_PASSPHRASE`).
 Releases are signed by the Taihei Framework release key,
 fingerprint `5026 B299 6DDB 697E C463  0BCF 14A7 33E2 A507 702F`.
@@ -85,7 +88,7 @@ instead. 3.0.0 also moved to Scala 3.9 (LTS), so your build needs Scala 3.9 or l
 import dev.taihei.lorem.LoremIpsum
 
 LoremIpsum.name          // "Olivia Hernandez"
-LoremIpsum.email         // "olivia.hernandez@brightwavehub.com"
+LoremIpsum.email         // "olivia.hernandez@brightwavehub.example"
 LoremIpsum.paragraph     // a paragraph of lorem filler
 LoremIpsum.address       // "lorem ipsum dolor 42, 1234 Berlin"
 LoremIpsum.city          // "Tokyo"
@@ -93,8 +96,10 @@ LoremIpsum.localDate     // a random java.time.LocalDate
 LoremIpsum.id            // a UUID-shaped identifier
 ```
 
-Every call returns a fresh random value (backed by `java.security.SecureRandom`).
-Highlights by category:
+Every call returns a fresh random value (backed by `java.security.SecureRandom`),
+except `today`, `yesterday` and `tomorrow`, which follow the UTC date. E-mail
+addresses and URLs use the reserved `.example` top-level domain, so they never
+reach a real host. Highlights by category:
 
 - **Text** — `word`, `words`, `sentence`, `paragraph(s)`, `htmlParagraphs`, `title`, `slug`, `password`
 - **People** — `firstName`, `lastName`, `name`
@@ -102,7 +107,7 @@ Highlights by category:
 - **Geography** — `street`, `city`, `zipCode`, `address`, `country`
 - **Dates** — `localDate`, `today`, `yesterday`, `tomorrow`, `futureDate`, `pastDate`
 - **Files** — `fileExtension`, `fileExtensionWithoutDot`, `mimeType`
-- **Ids / misc** — `id`, `character`, `bool`, `int(bound)`, `long(bound)`, `double(bound)`, `times(n)(f)`
+- **Ids / misc** — `id`, `character`, `bool`, `int(bound)` and `long(bound)` (in `[1, bound]`), `double(bound)` (in `[0, bound)`), `times(bound, f)` (one to `bound` items)
 - **Images** — `SampleImages.landscape`, `SampleImages.portrait` (base64 PNGs)
 
 City and country names are international (native scripts). `LoremIpsum.language`
@@ -116,7 +121,7 @@ import zio.test.*
 
 assertTrue(
   LoremIpsum.email.contains("@"),
-  LoremIpsum.name.split(" ").length == 2,
+  LoremIpsum.name.contains(" "), // last names may have spaces: "De La Cruz"
 )
 ```
 
@@ -124,5 +129,7 @@ The suite runs on both platforms (`make test`); JS tests execute under Node.
 
 ## License
 
-Apache License 2.0: see [LICENSE](LICENSE) and [NOTICE](NOTICE). Versions up to and
-including 2.0.0 (`fish.genius::genius-lorem`) remain available under the MIT License.
+Apache License 2.0: see [LICENSE](LICENSE) and [NOTICE](NOTICE). The NOTICE records
+the licence history: `fish.genius::genius-lorem` 1.0.0 to 1.1.0 were published under
+the GPL-3.0 and 2.0.0 under the MIT License; the copyright holder relicensed that code
+under the Apache License 2.0, from 3.0.0 on.

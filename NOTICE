@@ -2,13 +2,26 @@ Taihei Framework lorem
 Copyright 2026 Innovenso BV
 
 This product is developed by Innovenso BV (https://innovenso.com) as part of
-the Taihei Framework (https://taihei.dev).
+the Taihei Framework (https://taihei.dev). It is licensed under the Apache
+License 2.0 (see LICENSE).
 
-Versions up to and including 2.0.0 were published as fish.genius::genius-lorem
-under the MIT License, and remain available under it.
+Licence history
 
-Version 3.0.0 was published as com.edoframework::edo-lorem, as part of the
-Edo Framework, under the Apache License 2.0.
+The library was published earlier under other names and licences:
+
+- 1.0.0 to 1.1.0, as fish.genius::genius-lorem, under the GNU General Public
+  License version 3.0.
+- 2.0.0, as fish.genius::genius-lorem, under the MIT License, with the notice
+  "Copyright (c) 2026 Jurgen Lust / Genius Fish".
+- 3.0.0, as com.edoframework::edo-lorem, as part of the Edo Framework, under
+  the Apache License 2.0.
+- 4.0.0 and later, as dev.taihei::taihei-lorem, under the Apache License 2.0.
+
+The code of those earlier versions was written by Jurgen Lust, who holds its
+copyright and consented to its relicensing by Innovenso BV under the Apache
+License 2.0. This history is recorded for reference: the GPL and MIT licences
+do not apply to this code. Each earlier release, as published, keeps the
+licence it was published under.
 
 The text generator uses the "Lorem ipsum" passage, derived from Cicero's
 De finibus bonorum et malorum (45 BC), which is in the public domain.

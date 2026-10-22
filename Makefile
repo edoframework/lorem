@@ -7,7 +7,9 @@ CENTRAL_PATH = dev/taihei/taihei-lorem_3
 # The release credentials (MILL_SONATYPE_USERNAME / MILL_SONATYPE_PASSWORD for the Central Portal
 # user token, MILL_PGP_SECRET_BASE64 / MILL_PGP_PASSPHRASE for the release key). Read from this
 # file when it exists, otherwise from the environment (CI). Never passed as arguments: a
-# command line is readable by every local user in /proc.
+# command line is readable by every local user in /proc. The file name dates from the Edo
+# Framework, the family's earlier name; it is kept because the maintainers' workstations write
+# the file under that name for every library. RELEASE_ENV=… points elsewhere.
 RELEASE_ENV ?= $(HOME)/.edo-release.env
 
 # Kept in the repo (gitignored), not at a predictable path in /tmp that another user could plant.

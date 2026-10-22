@@ -8,7 +8,9 @@ All generators draw from a `java.security.SecureRandom`. Consequences:
 
 - **No seeding** — output is not reproducible across runs. Don't assert exact
   values in tests; assert on shape (`email.contains("@")`, two-part `name`, etc.).
-- `int(bound)` / `long(bound)` return values in `[1, bound]` — **never 0**.
+- `int(bound)` / `long(bound)` return values in `[1, bound]`, each equally likely — **never 0**
+  (before 4.0.1 they never returned `bound` and returned 1 twice as often).
+- `today`, `yesterday` and `tomorrow` are not random: they follow the UTC date.
 - `double(bound)` is in `[0, bound)`.
 
 ## The taihei-i18n dependency
@@ -20,6 +22,10 @@ library. The build depends on `dev.taihei::taihei-i18n` (JVM) /
 `build.mill`.
 
 ## Cross-platform name lists (ResourceLoader)
+
+`ResourceLoader`, `SampleWordCollection` and the objects in `dev.taihei.lorem.sources` are
+internal: public today, but not covered by the compatibility promise and private from the next
+major release. Use `LoremIpsum`.
 
 Most word lists are embedded Scala (`sources/*.scala`). Three larger lists —
 male names, female names, surnames — are JSON, loaded through a per-platform

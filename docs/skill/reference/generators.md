@@ -32,9 +32,9 @@ generator returning a fresh random value per call.
 
 | Member | Returns |
 | --- | --- |
-| `email: String` | `first.last@domain.tld` (name parts sanitized) |
-| `url: String` | `https://domain.tld` |
-| `phone: String` | `+32` followed by 9 digits |
+| `email: String` | `first.last@name.example` (name parts sanitized; the domain is always under the reserved `.example` TLD) |
+| `url: String` | `https://name.example` |
+| `phone: String` | `+32` followed by 9 digits, each 0-9 |
 
 ## Geography
 
@@ -42,7 +42,7 @@ generator returning a fresh random value per call.
 | --- | --- |
 | `street: String` | ~3 words |
 | `city: String` | an international city name |
-| `zipCode: String` | 4 numeric digits |
+| `zipCode: String` | 4 digits, each 0-9 |
 | `address: String` | `"word word word 42, 1234 City"` |
 | `country: String` | an international country name |
 
@@ -50,7 +50,7 @@ generator returning a fresh random value per call.
 
 | Member | Returns |
 | --- | --- |
-| `localDate` | a random date (year in [1, 3000]) |
+| `localDate` | a random date (year in [1, 3000], any month, day of month in [1, 28]) |
 | `today` / `yesterday` / `tomorrow` | current date (UTC) ± 1 day |
 | `futureDate` / `pastDate` | today ± a random number of weeks |
 
@@ -71,7 +71,7 @@ generator returning a fresh random value per call.
 | `int(bound: Int): Int` | random int in `[1, bound]` (never 0) |
 | `long(bound: Int): Long` | random long in `[1, bound]` |
 | `double(bound: Double): Double` | random double in `[0, bound)` |
-| `times[A](bound: Int, f: Int => A): List[A]` | apply `f` `bound` times → list |
+| `times[A](bound: Int, f: Int => A): List[A]` | `f` applied to `1..n` for a random `n` in `[1, bound]` → one to `bound` items |
 | `languages: Array[Language]` / `language: Language` | the taihei-i18n languages |
 
 ## Sample images
@@ -90,7 +90,7 @@ import dev.taihei.lorem.LoremIpsum
 
 // a fake person + contact
 val person  = LoremIpsum.name                 // "Olivia Hernandez"
-val email   = LoremIpsum.email                // "olivia.hernandez@brightwavehub.com"
+val email   = LoremIpsum.email                // "olivia.hernandez@brightwavehub.example"
 val address = LoremIpsum.address              // "lorem ipsum dolor 42, 3421 Berlin"
 
 // filler content
