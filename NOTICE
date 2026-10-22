@@ -17,11 +17,12 @@ The library was published earlier under other names and licences:
   the Apache License 2.0.
 - 4.0.0 and later, as dev.taihei::taihei-lorem, under the Apache License 2.0.
 
-The code of those earlier versions was written by Jurgen Lust, who published it
-as Genius Fish and is its sole copyright holder. He consented to its
-relicensing by Innovenso BV under the Apache License 2.0. This history is recorded for reference: the GPL and MIT licences
-do not apply to this code. Each earlier release, as published, keeps the
-licence it was published under.
+The code of those earlier versions was written by Jurgen Lust, who published
+it as Genius Fish and is its sole copyright holder. He consented to its
+relicensing by Innovenso BV under the Apache License 2.0. This history
+is recorded for reference: the GPL and MIT licences do not apply to
+this code. Each earlier release, as published, keeps the licence it was
+published under.
 
 The text generator uses the "Lorem ipsum" passage, derived from Cicero's
 De finibus bonorum et malorum (45 BC), which is in the public domain.
