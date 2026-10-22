@@ -1,6 +1,6 @@
 ---
-name: library-genius-lorem
-description: How to use Taihei Framework lorem (taihei-lorem, formerly taihei-lorem and genius-lorem) — Innovenso's composable, cross-platform fake-data / Lorem Ipsum generator for Scala 3 (JVM + Scala.js). Apply when writing or reviewing Scala that needs randomized test/seed data — filler text, fake names, emails, addresses, dates, files, ids, or sample images — via the dev.taihei.lorem.LoremIpsum API (genius.lorem.* before 3.0.0). Covers the generator catalog, sample images, randomness, the taihei-i18n dependency, and the cross-platform resource model.
+name: taihei-lorem
+description: How to use Taihei Framework lorem (taihei-lorem, formerly edo-lorem and genius-lorem) — Innovenso's composable, cross-platform fake-data / Lorem Ipsum generator for Scala 3 (JVM + Scala.js). Apply when writing or reviewing Scala that needs randomized test/seed data — filler text, fake names, emails, addresses, dates, files, ids, or sample images — via the dev.taihei.lorem.LoremIpsum API (genius.lorem.* before 3.0.0). Covers the generator catalog, sample images, randomness, the taihei-i18n dependency, and the cross-platform resource model.
 ---
 
 # Taihei Framework lorem (formerly genius-lorem)
@@ -11,12 +11,12 @@ flat catalog of generators for filler text, people, internet, geography, dates,
 files, ids, and sample images.
 
 The package is `dev.taihei.lorem`. Artifacts on Maven Central:
-`dev.taihei::taihei-lorem` (JVM) and `dev.taihei::taihei-lorem_sjs1` (Scala.js),
+`dev.taihei::taihei-lorem`, published as `taihei-lorem_3` (JVM) and `taihei-lorem_sjs1_3` (Scala.js),
 from 4.0.0, compiled with Scala 3.9 (LTS), Apache 2.0. It depends on
 `dev.taihei::taihei-i18n` for `Language`. Source:
 <https://github.com/taiheiframework/lorem>. 3.0.0 was `com.edoframework::edo-lorem` in
 package `com.edoframework.lorem`; up to 2.0.0 it was `fish.genius::genius-lorem` in
-package `genius.lorem` on repo.genius.fish. All three have the same API.
+package `genius.lorem`. All three have the same API.
 
 ## When to use this skill
 
