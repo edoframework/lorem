@@ -33,12 +33,22 @@ object V {
 // release itself is the Makefile's (release-prepare / release-finalize).
 // ---------------------------------------------------------------------------
 object release extends Module {
+  private def gitAt(root: os.Path, args: String*) = os.proc("git", args).call(cwd = root, check = false)
+
+  // Not being at an exact tag is the normal case, so this probe's "no tag exactly matches" is kept
+  // out of the log. Every other git error stays visible: a describe that fails for another reason
+  // (a shallow clone, git refusing the repository) must not leave MiMa without a baseline unseen.
+  private def isExactTag(root: os.Path) = os
+    .proc("git", "describe", "--tags", "--exact-match", "--match", "v[0-9]*")
+    .call(cwd = root, check = false, stderr = os.Pipe)
+    .exitCode == 0
+
   def gitVersion = Task.Input {
     val root     = os.Path(sys.env("MILL_WORKSPACE_ROOT"))
-    def git(args: String*) = os.proc("git", args).call(cwd = root, check = false, stderr = os.Pipe)
+    def git(args: String*) = gitAt(root, args*)
     val tag      = git("describe", "--tags", "--abbrev=0", "--match", "v[0-9]*")
     val version  = if (tag.exitCode == 0) tag.out.trim().stripPrefix("v") else "0.0.0"
-    val exactTag = git("describe", "--tags", "--exact-match", "--match", "v[0-9]*").exitCode == 0
+    val exactTag = isExactTag(root)
     val clean    = git("status", "--porcelain").out.text().linesIterator.forall(_.startsWith("??"))
     if (exactTag && clean) version else s"$version-SNAPSHOT"
   }
@@ -55,13 +65,13 @@ object release extends Module {
   // sets it), or a version.
   def mimaBaseline = Task.Input {
     val root = os.Path(sys.env("MILL_WORKSPACE_ROOT"))
-    def git(args: String*) = os.proc("git", args).call(cwd = root, check = false, stderr = os.Pipe)
+    def git(args: String*) = gitAt(root, args*)
     def numbers(v: String) = v.split('.').toSeq.map(_.toIntOption.getOrElse(0))
     Task.env.get("MIMA_BASELINE").map(_.trim).filter(_.nonEmpty) match {
       case Some("none") => None
       case Some(v)      => Some(v)
       case None         =>
-        val exactTag = git("describe", "--tags", "--exact-match", "--match", "v[0-9]*").exitCode == 0
+        val exactTag = isExactTag(root)
         val clean    = git("status", "--porcelain").out.text().linesIterator.forall(_.startsWith("??"))
         // HEAD^ of a root commit does not exist: describe fails and there is no baseline.
         val from = if (exactTag && clean) "HEAD^" else "HEAD"

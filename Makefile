@@ -152,7 +152,13 @@ release-prepare:
 	echo "[INFO] Cleaning build cache..."; \
 	./mill clean; \
 	echo "[INFO] Running validation..."; \
-	if [ "$(TYPE)" = "major" ]; then export MIMA_BASELINE=none; fi; \
+	if [ "$(TYPE)" = "major" ]; then export MIMA_BASELINE=none; else \
+		BASELINE=$$(./mill show release.mimaBaseline | tr -d '\n "'); \
+		if [ "$$BASELINE" != "$$CURRENT" ]; then \
+			echo "[ERROR] MiMa baseline is '$$BASELINE', not v$$CURRENT: a $(TYPE) release must be checked against it"; exit 1; \
+		fi; \
+		echo "[OK] MiMa baseline: $$BASELINE"; \
+	fi; \
 	$(MAKE) validate; \
 	if [ -n "$$(git status --porcelain | grep -v '^??')" ]; then \
 		echo "[ERROR] validate changed files: review and commit the reformatting first, then run release-prepare again."; \
