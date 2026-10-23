@@ -17,10 +17,10 @@ Published on Maven Central under `dev.taihei`:
 | `taihei-lorem_sjs1` | Scala.js | Name lists embedded; runs in the browser/Node. |
 
 ```scala
-mvn"dev.taihei::taihei-lorem:4.0.2"       // Mill, JVM
-mvn"dev.taihei::taihei-lorem::4.0.2"      // Mill, Scala.js
-"dev.taihei" %% "taihei-lorem" % "4.0.2"  // sbt, JVM
-"dev.taihei" %%% "taihei-lorem" % "4.0.2" // sbt, Scala.js (sbt-scalajs or sbt-crossproject)
+mvn"dev.taihei::taihei-lorem:4.0.3"       // Mill, JVM
+mvn"dev.taihei::taihei-lorem::4.0.3"      // Mill, Scala.js
+"dev.taihei" %% "taihei-lorem" % "4.0.3"  // sbt, JVM
+"dev.taihei" %%% "taihei-lorem" % "4.0.3" // sbt, Scala.js (sbt-scalajs or sbt-crossproject)
 ```
 
 `shared/` holds the generator and data; `jvm/` and `js/` carry only the
@@ -32,7 +32,7 @@ platform-specific resource loader. Depends on
 - Mill 1.3.1
 - Scala 3.9.0 (LTS) · Scala.js 1.22.0
 - ZIO 2.1.27 (`zio-json` 1.1, `zio-test`)
-- `dev.taihei::taihei-i18n` 4.0.1 · scala-java-time 2.8 and scalajs-java-securerandom (JS)
+- `dev.taihei::taihei-i18n` 4.0.2 · scala-java-time 2.8 and scalajs-java-securerandom (JS)
 
 Everything resolves from Maven Central; the build needs no credentials.
 
@@ -82,10 +82,13 @@ Coming from `fish.genius::genius-lorem:2.0.0`, replace `genius.lorem` and `geniu
 instead. 3.0.0 also moved to Scala 3.9 (LTS), so your build needs Scala 3.9 or later, to
 `zio-json` 1.1 instead of 0.9, and to the Apache License 2.0.
 
-lorem 4.0.2 and later depend on taihei-i18n 4.0.1. lorem 4.0.0 and 4.0.1 pull in taihei-i18n
-4.0.0, which is affected by
+Use lorem 4.0.3 or later: it depends on taihei-i18n 4.0.2. Earlier versions pull in an affected
+taihei-i18n. lorem 4.0.0 and 4.0.1 pull in taihei-i18n 4.0.0, affected by
 [GHSA-45w8-x6c8-w4hg](https://github.com/taiheiframework/i18n/security/advisories/GHSA-45w8-x6c8-w4hg)
-(stack exhaustion when parsing a very long language tag), so use 4.0.2 or later.
+(stack exhaustion when parsing a very long language tag). lorem 4.0.0 to 4.0.2 pull in a
+taihei-i18n affected by
+[GHSA-6h29-v54g-8337](https://github.com/taiheiframework/i18n/security/advisories/GHSA-6h29-v54g-8337)
+(unbounded memory and CPU when a `Message` read from untrusted JSON is decoded or formatted).
 
 ## Quick start
 

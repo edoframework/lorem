@@ -23,7 +23,7 @@ object V {
   val zioJson             = "1.1.1"
   val scalaJavaTime       = "2.8.0"
   val scalaJsSecureRandom = "1.0.0"
-  val taiheiI18n          = "4.0.1" // dev.taihei::taihei-i18n (Language)
+  val taiheiI18n          = "4.0.2" // dev.taihei::taihei-i18n (Language)
 }
 
 // ---------------------------------------------------------------------------

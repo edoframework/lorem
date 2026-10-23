@@ -2,9 +2,10 @@ package dev.taihei.lorem
 
 import java.time.LocalDate
 
+import zio.json.*
 import zio.test.*
 
-import dev.taihei.i18n.Language
+import dev.taihei.i18n.{Language, Message}
 
 object LoremIpsumSpec extends ZIOSpecDefault:
 
@@ -37,6 +38,16 @@ object LoremIpsumSpec extends ZIOSpecDefault:
         val head  = "en-x-abc"
         val at256 = head + "-a" * ((256 - head.length) / 2)
         assertTrue(at256.length == 256, Language.parse(at256).isLeft, Language.parse("nl-BE").isRight)
+      },
+      // taihei-i18n up to 4.0.1 read a Message of any size from JSON, and formatting it could use
+      // unbounded memory and CPU (GHSA-6h29-v54g-8337); 4.0.2 refuses a template over 65536
+      // characters. This fails when lorem resolves an i18n without that fix.
+      test("depends on a taihei-i18n that refuses a message template over 65536 characters") {
+        def json(template: String) = Message(Nil, translationTemplates = Map(Language.English -> template)).toJson
+        assertTrue(
+          json("x" * 65537).fromJson[Message].isLeft,
+          json("x" * 65536).fromJson[Message].isRight,
+        )
       },
     ),
     suite("Random number generation")(
