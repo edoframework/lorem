@@ -17,10 +17,10 @@ Published on Maven Central under `dev.taihei`:
 | `taihei-lorem_sjs1` | Scala.js | Name lists embedded; runs in the browser/Node. |
 
 ```scala
-mvn"dev.taihei::taihei-lorem:4.0.1"       // Mill, JVM
-mvn"dev.taihei::taihei-lorem::4.0.1"      // Mill, Scala.js
-"dev.taihei" %% "taihei-lorem" % "4.0.1"  // sbt, JVM
-"dev.taihei" %%% "taihei-lorem" % "4.0.1" // sbt, Scala.js (sbt-scalajs or sbt-crossproject)
+mvn"dev.taihei::taihei-lorem:4.0.2"       // Mill, JVM
+mvn"dev.taihei::taihei-lorem::4.0.2"      // Mill, Scala.js
+"dev.taihei" %% "taihei-lorem" % "4.0.2"  // sbt, JVM
+"dev.taihei" %%% "taihei-lorem" % "4.0.2" // sbt, Scala.js (sbt-scalajs or sbt-crossproject)
 ```
 
 `shared/` holds the generator and data; `jvm/` and `js/` carry only the
@@ -77,6 +77,11 @@ fingerprint `5026 B299 6DDB 697E C463  0BCF 14A7 33E2 A507 702F`.
 - the package is `dev.taihei.lorem`: replace `com.edoframework.lorem` in your imports;
 - `LoremIpsum.language` and `LoremIpsum.languages` return `dev.taihei.i18n.Language`
   (taihei-i18n 4.0.0).
+
+lorem 4.0.2 and later depend on taihei-i18n 4.0.1. lorem 4.0.0 and 4.0.1 pull in taihei-i18n
+4.0.0, which is affected by
+[GHSA-45w8-x6c8-w4hg](https://github.com/taiheiframework/i18n/security/advisories/GHSA-45w8-x6c8-w4hg)
+(stack exhaustion when parsing a very long language tag), so use 4.0.2 or later.
 
 Coming from `fish.genius::genius-lorem:2.0.0`, replace `genius.lorem` and `genius.i18n`
 instead. 3.0.0 also moved to Scala 3.9 (LTS), so your build needs Scala 3.9 or later, to
