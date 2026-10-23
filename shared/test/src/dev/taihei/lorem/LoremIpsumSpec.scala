@@ -30,6 +30,14 @@ object LoremIpsumSpec extends ZIOSpecDefault:
         val drawn = (1 to langs.length * 200).map(_ => LoremIpsum.language).toSet
         assertTrue(langs.nonEmpty, drawn == langs.toSet)
       },
+      // taihei-i18n up to 4.0.0 accepted a language tag of any length and could exhaust the
+      // stack on a long one (GHSA-45w8-x6c8-w4hg); 4.0.1 refuses a tag over 255 characters.
+      // This fails when lorem resolves an i18n without that fix.
+      test("depends on a taihei-i18n that refuses a language tag over 255 characters") {
+        val head  = "en-x-abc"
+        val at256 = head + "-a" * ((256 - head.length) / 2)
+        assertTrue(at256.length == 256, Language.parse(at256).isLeft, Language.parse("nl-BE").isRight)
+      },
     ),
     suite("Random number generation")(
       test("int returns a positive number") {

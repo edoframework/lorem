@@ -32,7 +32,7 @@ platform-specific resource loader. Depends on
 - Mill 1.3.1
 - Scala 3.9.0 (LTS) · Scala.js 1.22.0
 - ZIO 2.1.27 (`zio-json` 1.1, `zio-test`)
-- `dev.taihei::taihei-i18n` 4.0.0 · scala-java-time 2.8 and scalajs-java-securerandom (JS)
+- `dev.taihei::taihei-i18n` 4.0.1 · scala-java-time 2.8 and scalajs-java-securerandom (JS)
 
 Everything resolves from Maven Central; the build needs no credentials.
 
