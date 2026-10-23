@@ -17,10 +17,10 @@ Published on Maven Central under `dev.taihei`:
 | `taihei-lorem_sjs1` | Scala.js | Name lists embedded; runs in the browser/Node. |
 
 ```scala
-mvn"dev.taihei::taihei-lorem:4.0.0"       // Mill, JVM
-mvn"dev.taihei::taihei-lorem::4.0.0"      // Mill, Scala.js
-"dev.taihei" %% "taihei-lorem" % "4.0.0"  // sbt, JVM
-"dev.taihei" %%% "taihei-lorem" % "4.0.0" // sbt, Scala.js (sbt-scalajs or sbt-crossproject)
+mvn"dev.taihei::taihei-lorem:4.0.1"       // Mill, JVM
+mvn"dev.taihei::taihei-lorem::4.0.1"      // Mill, Scala.js
+"dev.taihei" %% "taihei-lorem" % "4.0.1"  // sbt, JVM
+"dev.taihei" %%% "taihei-lorem" % "4.0.1" // sbt, Scala.js (sbt-scalajs or sbt-crossproject)
 ```
 
 `shared/` holds the generator and data; `jvm/` and `js/` carry only the
