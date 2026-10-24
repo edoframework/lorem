@@ -1,8 +1,31 @@
 SHELL = /bin/bash
 
-# Maven Central coordinates of one published artifact, used to see whether a version is already
-# released. Central is immutable: a version that is there cannot be published again.
-CENTRAL_PATH = dev/taihei/taihei-mihon_3
+# Maven Central paths of every published artifact, used to see whether a version is already
+# released. Central is immutable: a version that is there cannot be published again, and a
+# release publishes all of them or none.
+CENTRAL_PATHS = dev/taihei/taihei-mihon_3 dev/taihei/taihei-mihon_sjs1_3
+
+# The folders whose files go into the published jars (build.mill names no other: its published
+# modules have no default resource folders). Mill packs whatever is there, also files git does
+# not track or ignores (an IDE's or scala-cli's working files), so a release refuses when any such
+# file is present, whatever git's settings for untracked files, and when a tracked file there is
+# marked assume-unchanged or skip-worktree, which hides its edits from git status: what is
+# published is what the tag holds.
+SOURCE_DIRS = shared jvm js mihon
+# The build definition decides which modules are published: a stray .mill file anywhere in the
+# tree adds one. So the guard covers it too, and every publishing step checks that exactly the
+# modules below are published.
+BUILD_FILES = '*.mill' '*.mill.yaml' '*.mill.scala' '*.sc' mill-build .mill-version .mill-jvm-opts .config ':(exclude)out'
+STRAY_GUARD = STRAY=$$(git status --porcelain --ignored --untracked-files=all -- $(SOURCE_DIRS) $(BUILD_FILES)); \
+	HIDDEN=$$(git ls-files -v -- $(SOURCE_DIRS) | grep -E '^[a-zS]' || true); \
+	if [ -n "$$STRAY$$HIDDEN" ]; then echo "[ERROR] files git does not track, or hides changes of, would be published:"; echo "$$STRAY$$HIDDEN"; exit 1; fi
+
+PUBLISHED = mihon.js.publishArtifacts mihon.jvm.publishArtifacts
+MODULE_GUARD = MODULES=$$(./mill resolve __.publishArtifacts | sort | tr '\n' ' ' | sed 's/ $$//'); \
+	if [ "$$MODULES" != "$(PUBLISHED)" ]; then echo "[ERROR] the build would publish '$$MODULES', not '$(PUBLISHED)'"; exit 1; fi
+
+# A release version is three numbers and nothing else.
+VERSION_GUARD = if ! [[ "$$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$$ ]]; then echo "[ERROR] not a release version: '$$VERSION'"; exit 1; fi
 
 # The release credentials (MILL_SONATYPE_USERNAME / MILL_SONATYPE_PASSWORD for the Central Portal
 # user token, MILL_PGP_SECRET_BASE64 / MILL_PGP_PASSPHRASE for the release key). Read from this
@@ -52,7 +75,7 @@ build: prepare test
 test:
 	./mill __.test.testForked
 
-# Binary compatibility with the baseline release (release.mimaBaseline: the newest v-tag, or
+# Binary compatibility with the baseline release (release.mimaBaseline: the newest v-tag before HEAD, or
 # MIMA_BASELINE). A break fails here; a major sets MIMA_BASELINE=none.
 mima:
 	@echo "[mima] baseline: $$(./mill show release.mimaBaseline | tr -d '\n "' | sed 's/^null$$/none/')"
@@ -77,35 +100,59 @@ publishLocal:
 	fi
 	./mill __.publishLocal
 
-# Signs every artifact and uploads one bundle to the Central Portal, which validates it and
-# publishes it (Mill's SonatypeCentralPublishModule, AUTOMATIC). Only a release version: the
-# Central snapshot repository is not enabled for the namespace.
+# Signs every artifact and uploads them as one named bundle (the Mill daemon is shut down at the
+# end, so that no process keeps the credentials) to the Central Portal, which
+# validates it and publishes it (Mill's SonatypeCentralPublishModule, AUTOMATIC): one deployment,
+# so that a failure leaves none of the artifacts public. Only a release version: the Central
+# snapshot repository is not enabled for the namespace.
 publish:
 	@set -e; \
+	$(STRAY_GUARD); \
+	trap './mill shutdown >/dev/null 2>&1 || true' EXIT; \
+	$(MODULE_GUARD); \
 	if [ -f "$(RELEASE_ENV)" ]; then . "$(RELEASE_ENV)"; fi; \
 	for V in MILL_SONATYPE_USERNAME MILL_SONATYPE_PASSWORD MILL_PGP_SECRET_BASE64 MILL_PGP_PASSPHRASE; do \
 	  if [ -z "$${!V}" ]; then echo "[publish] $$V is not set ($(RELEASE_ENV) or the environment)"; exit 1; fi; \
 	done; \
 	VERSION=$$(./mill show release.gitVersion | tr -d '"'); \
 	case "$$VERSION" in *-SNAPSHOT) echo "[publish] refused: $$VERSION is not a release (an exact v-tag on a clean tree)"; exit 1;; esac; \
+	$(VERSION_GUARD); \
 	echo "[publish] $$VERSION to Maven Central"; \
-	./mill mill.javalib.SonatypeCentralPublishModule/
+	./mill mill.javalib.SonatypeCentralPublishModule/ --bundleName "dev.taihei-taihei-mihon-$$VERSION"
 
-# The same bundle, signed, written to out/ instead of uploaded: what Central would receive.
+# The same bundle, signed, written to out/ instead of uploaded: what Central would receive. Mill
+# names a bundle only for a release version, so a SNAPSHOT dry run writes it unnamed.
 publish-dry-run:
 	@set -e; \
+	$(STRAY_GUARD); \
+	trap './mill shutdown >/dev/null 2>&1 || true' EXIT; \
+	$(MODULE_GUARD); \
 	if [ -f "$(RELEASE_ENV)" ]; then . "$(RELEASE_ENV)"; fi; \
-	MILL_TESTS_PUBLISH_DRY_RUN=1 ./mill mill.javalib.SonatypeCentralPublishModule/; \
+	VERSION=$$(./mill show release.gitVersion | tr -d '"'); \
+	case "$$VERSION" in *-SNAPSHOT) BUNDLE=();; *) BUNDLE=(--bundleName "dev.taihei-taihei-mihon-$$VERSION");; esac; \
+	MILL_TESTS_PUBLISH_DRY_RUN=1 ./mill mill.javalib.SonatypeCentralPublishModule/ "$${BUNDLE[@]}"; \
 	echo "[publish-dry-run] bundle in out/mill.javalib.SonatypeCentralPublishModule/publishAll.dest/repository"
 
-# Refuses when the version at HEAD is already on Central (immutable) or is not a release.
+# Refuses when the version at HEAD is not a release, when any of its artifacts is already on
+# Central (immutable), naming each one that is, or when Central does not answer 200 or 404.
 release-preflight:
 	@set -e; \
 	VERSION=$$(./mill show release.gitVersion | tr -d '"'); \
 	case "$$VERSION" in *-SNAPSHOT) echo "[preflight] $$VERSION is not a release"; exit 1;; esac; \
-	CODE=$$(curl -s -o /dev/null -w '%{http_code}' "https://repo1.maven.org/maven2/$(CENTRAL_PATH)/$$VERSION/"); \
-	if [ "$$CODE" = "200" ]; then echo "[preflight] $$VERSION is already on Maven Central"; exit 1; fi; \
-	echo "[preflight] $$VERSION is not on Maven Central yet"
+	$(VERSION_GUARD); \
+	$(STRAY_GUARD); \
+	$(MODULE_GUARD); \
+	FOUND=""; \
+	for P in $(CENTRAL_PATHS); do \
+	  CODE=$$(curl -s --max-time 30 -o /dev/null -w '%{http_code}' "https://repo1.maven.org/maven2/$$P/$$VERSION/" || true); \
+	  case "$$CODE" in \
+	    200) FOUND="$$FOUND $$P";; \
+	    404) ;; \
+	    *) echo "[preflight] cannot tell whether $$P/$$VERSION is on Maven Central (HTTP $$CODE)"; exit 1;; \
+	  esac; \
+	done; \
+	if [ -n "$$FOUND" ]; then echo "[preflight] $$VERSION is already on Maven Central:$$FOUND"; exit 1; fi; \
+	echo "[preflight] $$VERSION is not on Maven Central yet ($(CENTRAL_PATHS))"
 
 # ---------------------------------------------------------------------------
 # Release
@@ -115,9 +162,13 @@ release-preflight:
 #
 # Publishing is atomic with the tag: the tag is created locally, the artifacts are published with
 # the clean version it gives, and only then do you push main and the tag. A failed publish leaves
-# nothing public: make release-abort, fix the cause, retry the same version.
+# nothing public: make release-abort, fix the cause, then release-prepare the same version again.
 # ---------------------------------------------------------------------------
 
+# release-finalize publishes the commit release-prepare validated, and refuses any other HEAD.
+# A patch or minor release is checked by MiMa against the current release; a check without a
+# baseline passes, so release-prepare refuses one whose baseline is anything else (a missing tag,
+# a MIMA_BASELINE in the environment). A major runs without one.
 # Nothing is staged on the release path: the clean-tree check counts staged changes as dirty, and
 # whatever validate rewrote is for a human to review and commit, never to fold into the release.
 # The release notes come from a claude call with no tools and none of the user's settings: it
@@ -168,8 +219,8 @@ release-prepare:
 	CHANGED=$$(git diff --name-only "v$$CURRENT"..HEAD 2>/dev/null || true); \
 	COUNT=$$(echo "$$COMMITS" | grep -c . || echo "0"); \
 	ST=$$(mktemp "$(CURDIR)/.release-state.XXXXXX"); \
-	printf '{"currentVersion":"%s","newVersion":"%s","releaseType":"%s","branch":"%s"}\n' \
-		"$$CURRENT" "$$NEW" "$(TYPE)" "$$BRANCH" > "$$ST"; \
+	printf '{"currentVersion":"%s","newVersion":"%s","releaseType":"%s","branch":"%s","head":"%s"}\n' \
+		"$$CURRENT" "$$NEW" "$(TYPE)" "$$BRANCH" "$$(git rev-parse HEAD)" > "$$ST"; \
 	mv -fT "$$ST" "$(RELEASE_STATE)"; \
 	NT=$$(mktemp "$(CURDIR)/.release-notes.XXXXXX"); trap 'rm -f "$$NT"' EXIT; \
 	if command -v claude >/dev/null 2>&1; then \
@@ -270,6 +321,10 @@ release-finalize:
 	fi; \
 	$(STATE_GUARD); \
 	NEW=$$(python3 -c "import json; print(json.load(open('$(RELEASE_STATE)'))['newVersion'])"); \
+	PREPARED=$$(python3 -c "import json; print(json.load(open('$(RELEASE_STATE)')).get('head', ''))"); \
+	if [ "$$PREPARED" != "$$(git rev-parse HEAD)" ]; then \
+		echo "[ERROR] HEAD is not the commit release-prepare validated ($${PREPARED:-none recorded}): make release-abort, then release-prepare again"; exit 1; \
+	fi; \
 	if git rev-parse -q --verify "refs/tags/v$$NEW" >/dev/null; then \
 		echo "[ERROR] v$$NEW is already tagged: an earlier finalize got that far. Check Central, then make release-abort"; exit 1; \
 	fi; \
@@ -285,17 +340,21 @@ release-finalize:
 		echo "[ERROR] Release notes not found: $$NOTES"; exit 1; \
 	fi; \
 	echo "[OK] Found release notes: $$NOTES"; \
-	git add "$$NOTES"; \
-	if ! git diff --cached --quiet; then \
-		git commit -m "Add release notes for version $$NEW"; \
-		echo "[OK] Committed release notes"; \
-	else \
-		echo "[WARN] Nothing to commit - release notes may already be committed"; \
+	if [ -n "$$(git status --porcelain | grep -v '^??')" ]; then \
+		echo "[ERROR] Changes besides the notes, staged or not, that release-prepare did not validate:"; \
+		git status --short | grep -v '^??'; exit 1; \
+	fi; \
+	git add -- "$$NOTES"; \
+	git commit -q -m "Add release notes for version $$NEW" -- "$$NOTES"; \
+	echo "[OK] Committed release notes"; \
+	if [ "$$(git rev-parse HEAD~1)" != "$$PREPARED" ] || [ "$$(git diff --name-only "$$PREPARED" HEAD)" != "$$NOTES" ]; then \
+		echo "[ERROR] the release commit is not the prepared commit plus $$NOTES: make release-abort"; exit 1; \
 	fi; \
 	if [ -n "$$(git status --porcelain | grep -v '^??')" ]; then \
 		echo "[ERROR] Uncommitted changes besides the notes: v$$NEW would publish as a SNAPSHOT"; \
 		git status --short | grep -v '^??'; exit 1; \
 	fi; \
+	$(STRAY_GUARD); \
 	git tag -a "v$$NEW" -m "Release $$NEW"; \
 	echo "[OK] Created local tag v$$NEW (not pushed)"; \
 	$(MAKE) release-preflight; \
@@ -316,11 +375,18 @@ release-abort:
 		if ! [[ "$$NEW" =~ ^[0-9]+\.[0-9]+\.[0-9]+$$ ]]; then echo "[ERROR] Not a version: $$NEW"; exit 1; fi; \
 		git tag -d "v$$NEW" 2>/dev/null || true; \
 		if [ "$$(git log -1 --pretty=%s)" = "Add release notes for version $$NEW" ]; then \
-			git reset --soft HEAD~1; \
+			git reset -q HEAD~1; \
 			echo "[OK] Reverted local release-notes commit"; \
+		fi; \
+		NOTES="RELEASE_$${NEW//./_}.md"; \
+		if [ -f "$$NOTES" ] && ! git ls-files --error-unmatch "$$NOTES" >/dev/null 2>&1; then \
+			mv -f "$$NOTES" ".release-notes.aborted-$$NEW.md"; \
+			echo "[OK] Moved the prepared notes $$NOTES to .release-notes.aborted-$$NEW.md (gitignored), for reference"; \
 		fi; \
 		rm -f $(RELEASE_STATE); \
 		echo "[OK] Release aborted, tag v$$NEW removed"; \
+		echo "[WARN] If the upload reached the Central Portal before the failure, Central may publish v$$NEW anyway:"; \
+		echo "       check https://repo1.maven.org/maven2/$(firstword $(CENTRAL_PATHS))/$$NEW/ before you release this version again."; \
 	else \
 		echo "No release in progress"; \
 	fi
