@@ -15,7 +15,7 @@ permissions:
 
 env:
   JAVA_VERSION: '25'
-  NODE_VERSION: '20'
+  NODE_VERSION: '24'
   # Everything resolves from Maven Central: the build needs no credentials.
 
 jobs:
@@ -52,6 +52,14 @@ jobs:
           key: mill-${{ runner.os }}-${{ hashFiles('build.mill', '.mill-version') }}
           restore-keys: |
             mill-${{ runner.os }}-
+
+      # A symlink or a submodule is a tracked, clean entry to git, but Mill follows a symlink into
+      # the published jars, wherever it points. The release refuses them (make's STRAY_GUARD); a
+      # pull request that adds one fails here, visibly.
+      - name: Refuse symlinks and submodules
+        run: |
+          links="$(git ls-files -s | awk '$1 != "100644" && $1 != "100755"')"
+          if [ -n "$links" ]; then echo "::error::tracked entries that are not regular files:"; echo "$links"; exit 1; fi
 
       - name: Check formatting
         run: ./mill __.checkFormat

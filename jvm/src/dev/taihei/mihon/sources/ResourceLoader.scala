@@ -1,6 +1,6 @@
 package dev.taihei.mihon.sources
 
-import scala.io.Source
+import scala.io.{Codec, Source}
 
 import zio.json.*
 
@@ -14,10 +14,14 @@ private[mihon] object ResourceLoader:
     if stream == null then
       throw new RuntimeException(s"Resource not found: $resourcePath")
     try
-      val jsonString = Source.fromInputStream(stream).mkString
+      val jsonString = Source.fromInputStream(stream)(
+        using Codec.UTF8
+      ).mkString
       jsonString.fromJson[List[String]] match
         case Right(list) => list
         case Left(error) =>
           throw new RuntimeException(s"Failed to parse JSON from $resourcePath: $error")
     finally
       stream.close()
+
+end ResourceLoader
