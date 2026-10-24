@@ -1,11 +1,7 @@
 package dev.taihei.mihon.sources
 
-/**
- * Internal: one of the word lists [[dev.taihei.mihon.LoremIpsum]] draws from. Not part of the public
- * API and not covered by the compatibility promise; it becomes private in the next major release.
- * Use [[dev.taihei.mihon.LoremIpsum]] instead.
- */
-object MimeTypes extends SampleWordCollection:
+// One of the word lists LoremIpsum draws from.
+private[mihon] object MimeTypes extends SampleWordCollection:
 
   override lazy val words: List[String] = List(
     "text/plain",         // Plain text

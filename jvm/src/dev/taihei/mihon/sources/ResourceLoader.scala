@@ -4,14 +4,10 @@ import scala.io.Source
 
 import zio.json.*
 
-// Throws on failure intentionally: this is fail-fast initialization code.
-// Resources are bundled at compile time; failure here indicates a build/packaging error
-// that must be fixed before the application can run.
-/**
- * Internal: loads the bundled JSON name lists. Not part of the public API and not covered by the
- * compatibility promise; it becomes private in the next major release.
- */
-object ResourceLoader:
+// Loads the JSON name lists. It throws on failure on purpose: the lists are bundled at build
+// time, so a failure here is a packaging error to fix before the application can run, not an
+// input to handle.
+private[mihon] object ResourceLoader:
 
   def loadStringList(resourcePath: String): List[String] =
     val stream = getClass.getResourceAsStream(resourcePath)

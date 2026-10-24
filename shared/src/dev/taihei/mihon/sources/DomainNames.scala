@@ -1,13 +1,9 @@
 package dev.taihei.mihon.sources
 
-// Every domain is under the .example top-level domain, reserved by RFC 2606 for documentation and
-// never delegated: a generated address or URL cannot reach a real host or mailbox.
-/**
- * Internal: one of the word lists [[dev.taihei.mihon.LoremIpsum]] draws from. Not part of the public
- * API and not covered by the compatibility promise; it becomes private in the next major release.
- * Use [[dev.taihei.mihon.LoremIpsum]] instead.
- */
-object DomainNames extends SampleWordCollection:
+// One of the word lists LoremIpsum draws from. Every domain is under the .example top-level
+// domain, reserved by RFC 2606 for documentation and never delegated: a generated address or URL
+// cannot reach a real host or mailbox.
+private[mihon] object DomainNames extends SampleWordCollection:
 
   override lazy val words: List[String] = List(
     "brightwavehub.example",
