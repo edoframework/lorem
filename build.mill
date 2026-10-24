@@ -359,7 +359,10 @@ object EmbeddedData {
       val (a, t) = pair(file, v, s"aliases[$i]")
       val alias  = str(file, a, s"aliases[$i]", nonEmpty = true)
       if (!alias.matches("[a-z]{2,3}(-[A-Z][a-z]{3})?(-[A-Z]{2})?")) fail(file, s"aliases[$i]: not a tag: $alias")
-      if (!tags.contains(str(file, t, s"aliases[$i] target"))) fail(file, s"aliases[$i]: an alias of a language without data")
+      // An alias may name a language without data yet: resolution then refuses it, rather than
+      // serve the alias by its base tag.
+      if (!str(file, t, s"aliases[$i] target").matches("[a-z]{2,3}(-[A-Z][a-z]{3})?"))
+        fail(file, s"aliases[$i]: the target is not a language with an optional script")
     }
     entries
   }
@@ -369,18 +372,28 @@ object EmbeddedData {
       "exclamationOpen", "exclamationMark", "comma", "quoteOpen", "quoteClose")
     val o = obj(file, ujson.read(os.read(file)), "text", strings.toSet ++ Set("cased", "titleCase", "capitals", "wordsPerSentence", "words"))
     strings.foreach(k => str(file, o(k), k))
-    cased(bool(file, o("cased"), "cased"))
+    val isCased = bool(file, o("cased"), "cased")
+    cased(isCased)
     bool(file, o("titleCase"), "titleCase")
-    arr(file, o("capitals"), "capitals", nonEmpty = false).zipWithIndex.foreach { case (v, i) =>
+    val capitals = arr(file, o("capitals"), "capitals", nonEmpty = false).zipWithIndex.map { case (v, i) =>
       val (k, c) = pair(file, v, s"capitals[$i]")
       val key = str(file, k, s"capitals[$i]", nonEmpty = true)
       if (key.codePointCount(0, key.length) > 2) fail(file, s"capitals[$i]: more than two letters")
       str(file, c, s"capitals[$i] capital", nonEmpty = true)
-    }
+      key
+    }.toSet
     val (lo, hi) = pair(file, o("wordsPerSentence"), "wordsPerSentence")
     val min = int(file, lo, "wordsPerSentence min", 1, 50)
     int(file, hi, "wordsPerSentence max", min, 50)
-    weighted(file, o("words"), "words", max = maxWords)
+    val words = weighted(file, o("words"), "words", max = maxWords)
+    // In a script with case, every word that starts with a small letter has its capital in the
+    // data, so a sentence never starts in lower case because an entry is missing.
+    if (isCased) words.foreach { w =>
+      val first = w.substring(0, w.offsetByCodePoints(0, 1))
+      val hasCapital = capitals(first) || (w.length >= 2 && capitals(w.substring(0, 2)))
+      if (Character.isLowerCase(first.codePointAt(0)) && !hasCapital)
+        fail(file, s"capitals: no capital for the initial of $w")
+    }
   }
 
   private def checkForm(file: os.Path, o: collection.Map[String, ujson.Value], where: String, latinScript: Boolean): Unit = {

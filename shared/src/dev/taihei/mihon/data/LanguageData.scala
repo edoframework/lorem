@@ -135,9 +135,10 @@ private[mihon] object LanguageData:
 
   /**
    * The language whose data serves `language`: its tag, then an alias from languages.json, then
-   * the tag with subtags stripped from the right (RFC 4647 lookup: `nl-BE` is `nl`). A tag that
-   * names a script other than the one found is refused (`en-Cyrl` is not served by `en`), so
-   * a caller never gets text in a script it did not ask for.
+   * the tag with subtags stripped from the right (RFC 4647 lookup: `nl-BE` is `nl`); the first of
+   * these that is a language or an alias decides, so an alias of a language without data
+   * refuses. A tag that names a script other than the one found is refused (`en-Cyrl` is not
+   * served by `en`), so a caller never gets text in a script it did not ask for.
    */
   def resolve(language: Language): Option[LanguageData] =
     val subtags = language.tag.split('-').toList
@@ -145,10 +146,18 @@ private[mihon] object LanguageData:
     val script  =
       subtags.drop(1).takeWhile(_.length > 1).find(s => s.length == 4 && s.forall(_.isLetter))
     val chain   = (subtags.length to 1 by -1).map(n => subtags.take(n).mkString("-"))
+    // The first tag of the chain that is a language with data or an alias decides: an alias
+    // whose language has no data refuses, rather than fall through to the base tag (zh-TW names
+    // Traditional Chinese, so it must not be served by zh, which is Simplified).
     chain.iterator
-      .map(t => aliases.getOrElse(t, t))
-      .flatMap(byTag.get)
+      .flatMap(t => aliases.get(t).map(Left(_)).orElse(byTag.get(t).map(Right(_))))
       .nextOption()
+      .flatMap {
+        case Left(target) => byTag.get(target)
+        case Right(data)  => Some(data)
+      }
       .filter(d => script.forall(_ == d.entry.script))
+
+  end resolve
 
 end LanguageData

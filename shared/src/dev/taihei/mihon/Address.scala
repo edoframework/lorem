@@ -7,8 +7,8 @@ package dev.taihei.mihon
  *
  * {{{
  * val us = Mihon.seeded(1L).address
- * us.lines      // List("1600 Wilson Street", "Houston, Texas 77001", "United States")
- * us.singleLine // "1600 Wilson Street, Houston, Texas 77001, United States"
+ * us.lines      // List("7 Lincoln Avenue", "New York City, New York 87344", "United States")
+ * us.singleLine // "7 Lincoln Avenue, New York City, New York 87344, United States"
  * }}}
  */
 final class Address private[mihon] (
@@ -45,7 +45,19 @@ final class Address private[mihon] (
   /** The country's ISO 3166-1 alpha-2 code, such as `US`. */
   def countryCode: String = isoCode
 
-  /** The [[singleLine]]. */
+  private def members = (lines, singleLine, street, postalCode, city, region, country, countryCode)
+
+  /** Equal when every member is equal. A field added in a later minor release joins equality. */
+  override def equals(other: Any): Boolean = other match
+    case that: Address => members == that.members
+    case _             => false
+
+  override def hashCode: Int = members.hashCode
+
+  /**
+   * The [[singleLine]]. For display. Two values with the same toString may still differ, see
+   * equals.
+   */
   override def toString: String = singleLine
 
 end Address

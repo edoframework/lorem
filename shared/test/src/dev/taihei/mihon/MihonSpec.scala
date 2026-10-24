@@ -132,6 +132,26 @@ object MihonSpec extends ZIOSpecDefault:
         val cities = many(3000)(en.city).toSet
         assertTrue(Set("New York City", "Los Angeles", "Chicago", "Houston", "Phoenix").subsetOf(cities))
       },
+      test("people and addresses are values: one seed gives equal ones, with equal hash codes") {
+        def draw(seed: Long) =
+          val m = Mihon.seeded(seed, Language("ja")); (m.person, m.address)
+        val (p1, a1)         = draw(4L)
+        val (p2, a2)         = draw(4L)
+        val (p3, a3)         = draw(5L)
+        val people           = List(p1, p2, p3)
+        assertTrue(
+          p1 == p2,
+          p1.hashCode == p2.hashCode,
+          a1 == a2,
+          a1.hashCode == a2.hashCode,
+          p1 != p3,
+          a1 != a3,
+          people.distinct == List(p1, p3),
+          Set(a1, a2, a3).size == 2,
+          !p1.equals(p1.fullName),
+          !a1.equals(a1.singleLine),
+        )
+      },
       test("city, street and postalCode are not empty") {
         assertTrue(en.city.nonEmpty, en.street.nonEmpty, en.postalCode.nonEmpty)
       },

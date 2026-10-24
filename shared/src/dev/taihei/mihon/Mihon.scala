@@ -37,7 +37,7 @@ import dev.taihei.tsuji.Language
  *
  * val ja = en.withLanguage(Language("ja"))
  * ja.sentence // Japanese text, without spaces, ending in 。, ？ or ！
- * ja.person.fullName // family name first, without a space: "三浦さくら"
+ * ja.person.fullName // family name first, without a space, such as "三浦さくら"
  *
  * Mihon.seeded(1L, Language("la")).sentence // Lorem Ipsum
  * }}}
@@ -127,8 +127,8 @@ final class Mihon private (
   def word: String = text.words.draw(random)
 
   /**
-   * One to ten words, joined by the language's word separator: a space, or nothing in Japanese
-   * and Chinese.
+   * One to ten words, joined by the language's word separator: a space, or nothing in Japanese,
+   * Chinese and Thai.
    */
   def words: String = times(10, _ => word).mkString(text.wordSeparator)
 
@@ -439,7 +439,10 @@ object Mihon:
    * The language a factory would use for `language`, or `None` when Mihon has none for it. The tag
    * is looked up as it is, then as an alias (`zh`, `zh-CN` and `zh-SG` are `zh-Hans`), then with
    * subtags stripped from the right (`en-GB` is `en`, `ja-JP` is `ja`). A tag that names another
-   * script than the one found is refused (`ru-Latn`). Code with input from outside asks first:
+   * script than the one found is refused (`ru-Latn`). An alias decides: `zh-TW` is refused until
+   * Traditional Chinese has data, never served by `zh-Hans`. A later minor release may serve a
+   * tag that is refused today, or serve it by a closer language (`nl-BE` once it has its own
+   * data). Pin the version to rely on `language`. Code with input from outside asks first:
    *
    * {{{
    * val mihon = Mihon.secure(Mihon.resolve(requested).getOrElse(Language.English))

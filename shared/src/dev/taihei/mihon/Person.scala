@@ -66,7 +66,16 @@ final class Person private[mihon] (
   ): String =
     if familyFirst then s"$f$sep$g" else s"$g$sep$f"
 
-  /** The [[fullName]]. */
+  private def members = (gender, givenName, familyName, fullName, reading, latin)
+
+  /** Equal when every member is equal. A field added in a later minor release joins equality. */
+  override def equals(other: Any): Boolean = other match
+    case that: Person => members == that.members
+    case _            => false
+
+  override def hashCode: Int = members.hashCode
+
+  /** The [[fullName]]. For display. Two values with the same toString may still differ, see equals. */
   override def toString: String = fullName
 
 end Person

@@ -9,8 +9,13 @@
     {"tag":"zh-Hans","script":"Hans","country":"CN"}
   ],
   "aliases": [
+    ["sr","sr-Cyrl"],
+    ["sr-RS","sr-Cyrl"],
     ["zh","zh-Hans"],
     ["zh-CN","zh-Hans"],
-    ["zh-SG","zh-Hans"]
+    ["zh-SG","zh-Hans"],
+    ["zh-HK","zh-Hant"],
+    ["zh-MO","zh-Hant"],
+    ["zh-TW","zh-Hant"]
   ]
 }

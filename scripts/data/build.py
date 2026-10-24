@@ -137,7 +137,8 @@ def main(tags):
     write_json(DATA / "languages.json", {
         "languages": [{"tag": t, "script": languages.conf(t)["script"], "country": languages.conf(t)["country"]}
                       for t in present],
-        "aliases": [a for a in languages.ALIASES if a[1] in present],
+        # Every alias, also of a language without data yet: resolution refuses it then.
+        "aliases": languages.ALIASES,
     })
 
 

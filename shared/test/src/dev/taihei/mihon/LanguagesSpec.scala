@@ -177,6 +177,15 @@ object LanguagesSpec extends ZIOSpecDefault:
         Mihon.seeded(1L, Language("zh-CN")).language == Language("zh-Hans"),
       )
     },
+    test("an alias of a language without data refuses, rather than fall back to its base tag") {
+      // zh-TW names Traditional Chinese: zh, its base, is Simplified.
+      val hant = Mihon.languages.contains(Language("zh-Hant"))
+      assertTrue(
+        Seq("zh-TW", "zh-HK", "zh-MO").forall(t =>
+          Mihon.resolve(Language(t)) == (if hant then Some(Language("zh-Hant")) else None)
+        )
+      )
+    },
     test("a language without data is refused, by resolve and by the factories, naming the languages") {
       val refused = scala.util.Try(Mihon.seeded(1L, Language("sw"))).failed.toOption
       assertTrue(
