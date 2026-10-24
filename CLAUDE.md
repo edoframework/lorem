@@ -8,13 +8,21 @@ parent folder's `CLAUDE.md` when this repo is checked out under `~/Projects/Taih
 ## Commands
 
 ```bash
-make validate          # scalafix, scalafmt, compile, test and MiMa, JVM and Scala.js
-make mima              # binary compatibility with the newest 5.x release tag only
+make validate          # repo-guard, scalafix, scalafmt, compile, test and MiMa, JVM and Scala.js
+make repo-guard        # Maven Central only: no other repository, every dev.taihei pin on Central
+make mima              # binary compatibility with the newest 5.x release tag on Maven Central
 make test              # ./mill __.test.testForked (JS tests run under Node)
 make publish-dry-run   # the bundle Maven Central would receive, written to out/
 make release-prepare TYPE=patch|minor|major   # then review RELEASE_x_y_z.md
-make release-finalize  # publishes to Maven Central: only with the maintainer's yes
+make release-finalize  # GitHub Packages and the read-back: only with the maintainer's yes
+make release-github    # after the push: the bundle on an immutable GitHub Release
 ```
+
+Releases follow ADR 0003: one signed bundle, uploaded unchanged to this repository's GitHub
+Packages registry, read back, tagged and pushed, kept on an immutable GitHub Release, and taken
+to Maven Central by the next release train in nakama. A security fix (`EMBARGO=1`) goes to
+Central first with `make publish`. The publish token lives in `~/.taihei-packages-publish.env`,
+the read token in Coursier's credentials file; never read or print either.
 
 ## Layout
 
