@@ -101,9 +101,10 @@ today's date from its own clock. Create one of two kinds:
 - `LoremIpsum.secure()` draws from a `java.security.SecureRandom`: the values do
   not repeat from run to run.
 - `LoremIpsum.seeded(seed)` draws from a `java.util.Random` with that seed: the
-  same seed, clock and Mihon version give the same values, in the same order, on
-  the JVM and on Scala.js. A minor release may change the values for a seed (a new
-  word, a changed list), so assert on the values of a seed only within one version.
+  same seed, clock, Mihon version and taihei-tsuji version give the same values, in
+  the same order, on the JVM and on Scala.js. A minor release of either may change
+  the values for a seed (a new word, a changed list, a new language for `language`),
+  so assert on the values of a seed only with both versions pinned.
 
 Both take a `java.time.Clock` as their last parameter, `Clock.systemUTC()` by
 default. `today`, `yesterday`, `tomorrow`, `futureDate` and `pastDate` follow it:

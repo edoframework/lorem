@@ -32,7 +32,10 @@ import dev.taihei.tsuji.Language
  */
 final class LoremIpsum private (random: Random, clock: Clock):
 
-  /** One of the languages taihei-tsuji knows (`Language.values`), each equally likely. */
+  /**
+   * One of the languages taihei-tsuji knows (`Language.values`), each equally likely. A
+   * taihei-tsuji release with another language changes the values a seed gives from here on.
+   */
   def language: Language =
     val values = Language.values
     values(random.nextInt(values.length))
@@ -215,9 +218,10 @@ end LoremIpsum
 object LoremIpsum:
 
   /**
-   * A generator whose values repeat: the same seed, clock and mihon version give the same values,
-   * in the same order, on the JVM and on Scala.js. A minor release may change the values for a
-   * seed (a new word, a changed list); assert on the values of a seed only within one version.
+   * A generator whose values repeat: the same seed, clock, mihon version and taihei-tsuji version
+   * give the same values, in the same order, on the JVM and on Scala.js. A minor release of either
+   * may change the values for a seed (a new word, a changed list, a new language for
+   * [[LoremIpsum.language]]); assert on the values of a seed only with both versions pinned.
    *
    * {{{
    * import java.time.{Clock, Instant, ZoneOffset}

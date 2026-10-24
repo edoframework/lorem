@@ -20,7 +20,7 @@ env:
 
 jobs:
   validate:
-    name: Validate (Format, Lint, Compile, Test, MiMa — JVM & JS)
+    name: Validate (Format, Lint, Compile, Test, MiMa, JVM & JS)
     runs-on: ubuntu-latest
 
     steps:

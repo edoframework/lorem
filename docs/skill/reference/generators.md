@@ -7,7 +7,7 @@ generator's own `java.util.Random` (seeded) or `SecureRandom` (secure).
 
 | Member | Returns |
 | --- | --- |
-| `LoremIpsum.seeded(seed: Long, clock: Clock = Clock.systemUTC()): LoremIpsum` | values that repeat for the same seed, clock and Mihon version, on the JVM and Scala.js |
+| `LoremIpsum.seeded(seed: Long, clock: Clock = Clock.systemUTC()): LoremIpsum` | values that repeat for the same seed, clock, Mihon version and taihei-tsuji version, on the JVM and Scala.js |
 | `LoremIpsum.secure(clock: Clock = Clock.systemUTC()): LoremIpsum` | values from a `SecureRandom`, which do not repeat |
 
 ## Text

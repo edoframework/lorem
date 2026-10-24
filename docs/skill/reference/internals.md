@@ -11,8 +11,9 @@ global generator.
   whose algorithm `java.util.Random` specifies and Scala.js implements alike (`nextInt`,
   `nextInt(n)`, `nextLong`, `nextBoolean`, `nextDouble`), so a seed gives the same values on the
   JVM and on Scala.js. The test `SeededSpec` pins the values of seed 42 and runs on both.
-- The values for a seed hold within one Mihon version. A new word, a changed list or a new
-  language in taihei-tsuji changes them, and that is allowed in a minor release.
+- The values for a seed hold for one Mihon version on one taihei-tsuji version. A new word, a
+  changed list or a new language in taihei-tsuji changes them, and that is allowed in a minor
+  release of either.
 - `LoremIpsum.secure()` uses a `java.security.SecureRandom`; values do not repeat.
 - One instance is thread-safe, but threads drawing from it in turn make it non-reproducible.
 - `int(bound)` / `long(bound)` return values in `[1, bound]`, each equally likely, never 0.

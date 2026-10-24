@@ -52,8 +52,8 @@ Both factories take a `java.time.Clock` last, `Clock.systemUTC()` by default; `t
 - The package is **`dev.taihei.mihon`**; `dev.taihei.lorem` (4.x), `com.edoframework.lorem`
   (3.0.0) and `genius.lorem` are the old names. `LoremIpsum.name` on the companion no longer
   compiles: create a generator first.
-- A seed repeats **within one Mihon version** only: a minor release may change the values for a
-  seed. Pin values in tests only next to a pinned version; otherwise assert on shape
+- A seed repeats **within one Mihon version and one taihei-tsuji version** only: a minor release
+  of either may change the values for a seed. Pin values in tests only next to a pinned version; otherwise assert on shape
   (`email.contains("@")`).
 - A seeded generator shared across threads stays thread-safe but stops being reproducible.
 - `LoremIpsum.languages` is gone: use `Language.values` from `dev.taihei.tsuji`.
