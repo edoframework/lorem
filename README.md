@@ -1,8 +1,9 @@
 # Taihei Mihon
 
-Mihon (見本) means sample or specimen. Taihei Mihon is a **fake-data and Lorem Ipsum generator**
-for Scala 3: filler text, names, emails, addresses, dates, files, ids and sample images, from a
-seed when you want the same values on every run. Cross-compiled for the **JVM and Scala.js**.
+Mihon (見本) means sample or specimen. Taihei Mihon is a **fake-data generator for Scala 3 in many
+languages**: text, people, addresses, phone numbers, dates, files, ids and sample images, in the
+script and conventions of the language you choose, from a seed when you want the same values on
+every run. Cross-compiled for the **JVM and Scala.js**.
 
 Part of the [Taihei Framework](https://taihei.dev), the open-source Scala 3
 libraries from Innovenso. The package is `dev.taihei.mihon`. Up to 4.x the library was called
@@ -12,10 +13,10 @@ taihei-lorem: see [Coming from taihei-lorem 4.x](#coming-from-taihei-lorem-4x).
 
 Published on Maven Central under `dev.taihei`:
 
-| Artifact            | Platform | Notes                                                |
-| ------------------- | -------- | ---------------------------------------------------- |
-| `taihei-mihon`      | JVM      | Name lists read from the classpath.                  |
-| `taihei-mihon_sjs1` | Scala.js | Name lists compiled in; runs in the browser or Node. |
+| Artifact            | Platform | Notes                                                  |
+| ------------------- | -------- | ------------------------------------------------------ |
+| `taihei-mihon`      | JVM      | Language data read from the classpath.                 |
+| `taihei-mihon_sjs1` | Scala.js | Language data compiled in; runs in the browser or Node. |
 
 ```scala
 mvn"dev.taihei::taihei-mihon:5.0.0"       // Mill, JVM
@@ -24,9 +25,12 @@ mvn"dev.taihei::taihei-mihon::5.0.0"      // Mill, Scala.js
 "dev.taihei" %%% "taihei-mihon" % "5.0.0" // sbt, Scala.js (sbt-scalajs or sbt-crossproject)
 ```
 
-`shared/` holds the generator and the word lists; `jvm/` and `js/` carry only the
-platform-specific loader of the name lists. Depends on
+`shared/` holds the generator and, in `shared/resources/`, the language data; `jvm/` and `js/`
+carry only the platform-specific loader of that data. Depends on
 [Taihei Tsuji](https://github.com/taiheiframework/tsuji) for `Language`.
+
+Mihon is for tests, seed data and mock-ups. Its language data adds a few megabytes to a Scala.js
+bundle, so it does not belong in a production browser bundle.
 
 5.0.0 is the first release under the name Taihei Mihon, and a major release: see
 [Coming from taihei-lorem 4.x](#coming-from-taihei-lorem-4x). The 4.x line keeps its name,
@@ -49,7 +53,8 @@ make compile        # ./mill __.compile           (JVM + JS)
 make test           # ./mill __.test.testForked    (JVM + JS; JS runs on Node)
 make fmt            # ./mill __.reformat
 make fix            # ./mill __.fix                 (scalafix)
-make validate       # fix + fmt + compile + test + mima
+make validate       # repo-guard + fix + fmt + compile + test + mima + budget
+make budget         # the size budget of the data, the JVM jar and the Scala.js output
 make mima           # binary compatibility with the newest release tag
 make publishLocal   # to ~/.ivy2/local (a SNAPSHOT only)
 ```
@@ -97,75 +102,135 @@ fingerprint `5026 B299 6DDB 697E C463  0BCF 14A7 33E2 A507 702F`.
 ## Quick start
 
 ```scala
-import dev.taihei.mihon.LoremIpsum
+import dev.taihei.mihon.Mihon
+import dev.taihei.tsuji.Language
 
-val lorem = LoremIpsum.secure()
+val mihon = Mihon.secure()      // English, values that do not repeat
 
-lorem.name          // "Olivia Hernandez"
-lorem.email         // "olivia.hernandez@brightwavehub.example"
-lorem.paragraph     // a paragraph of lorem filler
-lorem.address       // "lorem ipsum dolor 42, 1234 Berlin"
-lorem.city          // "Tokyo"
-lorem.localDate     // a random java.time.LocalDate
-lorem.id            // a UUID-shaped identifier
+mihon.name                      // "Linda Robinson"
+mihon.email                     // "linda.robinson@brightwavehub.example"
+mihon.paragraph                 // a paragraph of English words
+mihon.address.singleLine        // "180 Cedar Lane, Houston, Texas 77233, United States"
+mihon.phone                     // "+1 537 555-0154", a number reserved for fiction
+mihon.localDate                 // a random java.time.LocalDate
+mihon.id                        // a UUID-shaped identifier
+
+val lorem = Mihon.seeded(42L, Language("la"))
+lorem.paragraph                 // Lorem Ipsum
 ```
 
-A generator draws every value from its own random number generator and reads
-today's date from its own clock. Create one of two kinds:
+A generator is bound to one language, English by default. Its text is in the language's
+script and punctuation, its people are named in the language's name order, and its addresses
+and phone numbers are those of the language's default country. `withLanguage` gives a view in
+another language that shares the same random generator and clock.
 
-- `LoremIpsum.secure()` draws from a `java.security.SecureRandom`: the values do
-  not repeat from run to run.
-- `LoremIpsum.seeded(seed)` draws from a `java.util.Random` with that seed: the
-  same seed, clock, Mihon version and taihei-tsuji version give the same values, in
-  the same order, on the JVM and on Scala.js. A minor release of either may change
-  the values for a seed (a new word, a changed list, a new language for `language`),
-  so assert on the values of a seed only with both versions pinned.
+### Languages
 
-Both take a `java.time.Clock` as their last parameter, `Clock.systemUTC()` by
-default. `today`, `yesterday`, `tomorrow`, `futureDate` and `pastDate` follow it:
+`Mihon.languages` lists the languages with data, sorted by tag: `en` (English, United States)
+and `la` (Latin, Vatican City). Latin's text is Lorem Ipsum.
+
+A factory or `withLanguage` looks a language up by its tag, then by an alias, then with
+subtags stripped from the right, so `en-GB` is served by `en`. A tag that names another script
+than the one found is refused (`en-Cyrl`), and so is a language without data, with an
+`IllegalArgumentException` that names the tag and the languages there are. With a language
+from outside, ask first:
+
+```scala
+val mihon = Mihon.secure(Mihon.resolve(requested).getOrElse(Language.English))
+mihon.language // the language whose data it uses: en for en-GB
+```
+
+### People and addresses
+
+```scala
+val p = Mihon.seeded(1L).person
+p.givenName; p.familyName; p.gender  // Gender.Female or Gender.Male
+p.fullName                           // in the language's name order
+p.latin                              // romanised; the same as fullName in Latin script
+p.reading                            // the kana reading in Japanese, None elsewhere
+
+val a = Mihon.seeded(1L).address
+a.lines                              // top to bottom, in the country's format
+a.street; a.city; a.region; a.postalCode; a.country; a.countryCode
+```
+
+`email` is built from the romanised name, in ASCII, at a domain under the reserved `.example`
+top-level domain, so it never reaches a real host. Digits are ASCII in every language. Where a
+country reserves phone numbers for fiction (the United States' 555-0100 to 555-0199), `phone`
+uses them; elsewhere a number may be real, so never call or text one.
+
+### Dates
+
+Mihon draws dates as `java.time.LocalDate` values and formats none: format them in the
+reader's language with [Taihei Tsuji](https://github.com/taiheiframework/tsuji), whose output
+follows each platform's locale data.
+
+### Seeds and the clock
+
+A generator draws every value from its own random number generator and reads today's date from
+its own clock. Create one of two kinds:
+
+- `Mihon.secure()` draws from a `java.security.SecureRandom`: the values do not repeat from run
+  to run.
+- `Mihon.seeded(seed)` draws from a `java.util.Random` with that seed. The same seed, language,
+  clock and Mihon version give the same values in the same order, on the JVM and on Scala.js.
+  Any other Mihon version, a patch included, may give other values; the release notes say so
+  whenever they do. Pin the Mihon version to assert on a seed's values.
+
+Both take the language and a `java.time.Clock`, `Clock.systemUTC()` by default. `today`,
+`yesterday`, `tomorrow`, `futureDate` and `pastDate` follow the clock:
 
 ```scala
 import java.time.{Clock, Instant, ZoneOffset}
 
 val clock = Clock.fixed(Instant.parse("2026-10-24T12:00:00Z"), ZoneOffset.UTC)
-val fixed = LoremIpsum.seeded(42L, clock)
+val fixed = Mihon.seeded(42L, clock = clock)
 
 fixed.today       // 2026-10-24
 fixed.futureDate  // the same date on every run
 ```
 
-One generator may be shared across threads; it stays thread-safe, but the order in
-which threads draw then decides the values, so they are no longer reproducible.
-E-mail addresses and URLs use the reserved `.example` top-level domain, so they
-never reach a real host. Highlights by category:
+Views from `withLanguage` share one generator, so the order of calls across them is part of what
+a seed repeats. One generator may be shared across threads; it stays thread-safe, but the order
+in which threads draw then decides the values, so they are no longer reproducible.
 
-- **Text**: `word`, `words`, `sentence`, `sentences`, `paragraph`, `paragraphs`, `htmlParagraphs`, `title`, `description`, `slug`, `password`
-- **People**: `firstName`, `lastName`, `name`
-- **Internet**: `email`, `url`, `phone`
-- **Geography**: `street`, `city`, `zipCode`, `address`, `country`
+### Members by category
+
+- **Text**: `word`, `words`, `sentence`, `sentences`, `paragraph`, `paragraphs`, `htmlParagraphs`, `title`, `slug`
+- **People**: `person`, `person(gender)`, `name`, `givenName`, `familyName`, `email`
+- **Places and contact**: `address`, `street`, `city`, `postalCode`, `country`, `phone`
 - **Dates**: `localDate`, `today`, `yesterday`, `tomorrow`, `futureDate`, `pastDate`
-- **Files**: `fileExtension`, `fileExtensionWithoutDot`, `mimeType`
-- **Ids and primitives**: `id`, `character`, `bool`, `int(bound)` and `long(bound)` (in `[1, bound]`), `double(bound)` (in `[0, bound)`), `times(bound, f)` (one to `bound` items), `language`
+- **Files and the web**: `url`, `fileExtension`, `fileExtensionWithoutDot`, `mimeType`
+- **Ids and primitives**: `id`, `character`, `password`, `bool`, `int(bound)` and `long(bound)` (in `[1, bound]`), `double(bound)` (in `[0, bound)`), `times(bound, f)` (one to `bound` items)
+- **Languages**: `language`, `withLanguage`, `anyLanguage`; `Mihon.languages`, `Mihon.resolve`
 - **Images**: `SampleImages.landscape`, `SampleImages.portrait` (base64 PNGs, constants)
-
-City and country names are international (native scripts). `language` returns a
-random `dev.taihei.tsuji.Language`.
 
 ## Testing
 
 ```scala
-import dev.taihei.mihon.LoremIpsum
+import dev.taihei.mihon.Mihon
 import zio.test.*
 
-val lorem = LoremIpsum.seeded(42L)
+val mihon = Mihon.seeded(42L)
 
 assertTrue(
-  lorem.email.contains("@"),
-  lorem.name.contains(" "), // last names may have spaces: "De La Cruz"
+  mihon.email.endsWith(".example"),
+  mihon.person.fullName.nonEmpty,
 )
 ```
 
-The suite runs on both platforms (`make test`); JS tests execute under Node.
+The suite runs on both platforms (`make test`); JS tests execute under Node. `SeededSpec` pins
+a seeded run in every language, so it proves on each build that the JVM and Scala.js draw the
+same values.
+
+## Data
+
+The language data and where it comes from (Unicode CLDR, the Tatoeba Project, Wikidata, the
+U.S. Census Bureau, and formats written for this library) are described in
+[docs/data-sources.md](docs/data-sources.md), with the licence of each; NOTICE carries the
+attributions. The scripts that build the data are in `scripts/data/`; the build never runs them.
+`make validate` checks every data file against its schema and holds the data, the JVM jar and the
+Scala.js output to a size budget.
 
 ## Coming from taihei-lorem 4.x
 
@@ -185,21 +250,31 @@ different artifacts in different packages, so they can be on one classpath side 
 grep -rlZ 'dev\.taihei\.lorem' --include='*.scala' . | xargs -0 perl -pi -e 's/dev\.taihei\.lorem/dev.taihei.mihon/g'
 ```
 
-`LoremIpsum` is no longer an object with a global generator and the wall clock: create a
-generator once and call the same members on it.
+The object `LoremIpsum` became the class `Mihon`, bound to one language: create a generator
+once and call the members on it. Lorem Ipsum is now the text of Latin.
 
 | 4.x | 5.x |
 | --- | --- |
-| `LoremIpsum.name` (any generator) | `val lorem = LoremIpsum.secure()`, then `lorem.name` |
-| no way to repeat values | `LoremIpsum.seeded(seed)` |
+| `LoremIpsum.name` (any generator) | `val mihon = Mihon.secure()`, then `mihon.name` |
+| Lorem Ipsum text (`word`, `sentence`, `paragraph` …) | `Mihon.secure(Language("la"))`; an English generator gives English words |
+| no way to repeat values | `Mihon.seeded(seed)`; the language is the second parameter, so a clock is `clock = c` |
 | `today` is the UTC date by the wall clock | `today` follows the generator's clock, `Clock.systemUTC()` by default |
-| `LoremIpsum.languages` | `Language.values` from `dev.taihei.tsuji` |
+| `firstName`, `lastName` | `givenName`, `familyName` |
+| `zipCode` | `postalCode` |
+| `address: String` | `address: Address`; `address.singleLine` is a one-line form |
+| `description` | removed: use `sentences` |
+| `language` (a random `Language`) | `anyLanguage`, one of `Mihon.languages`; `language` is the generator's own |
+| `LoremIpsum.languages` | `Mihon.languages`, the languages with data |
+| `city`, `country`, `street`, `phone` from mixed international lists | from the generator's language and its default country; `country` names any country in the language |
+| `phone` (`+32` and nine digits) | the calling code and a national number of the default country |
 | `dev.taihei.i18n.Language` | `dev.taihei.tsuji.Language` |
-| `dev.taihei.lorem.sources.*` (word lists), `SampleWordCollection`, `ResourceLoader` | internal now: use `LoremIpsum` |
+| `dev.taihei.lorem.sources.*` (word lists), `SampleWordCollection`, `ResourceLoader` | internal now: use `Mihon` |
 | `sources.StateAbbreviations`, `sources.StateFullNames` | removed; nothing used them |
 | `id` from `UUID.randomUUID` | a version-4 UUID drawn from the generator, so a seeded one repeats |
 
-`SampleImages` and the names, ranges and distributions of the other generators are unchanged.
+The name, city and country lists of 4.x had no recorded source and are gone; the names and
+places of 5.x come from the sources in [docs/data-sources.md](docs/data-sources.md).
+`SampleImages`, `url`, `id`, `password` and the files and dates generators are unchanged.
 
 ## Coming from edo-lorem 3.0.0 or genius-lorem
 

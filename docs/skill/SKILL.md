@@ -1,13 +1,14 @@
 ---
 name: taihei-mihon
-description: How to use Taihei Mihon (dev.taihei::taihei-mihon, formerly taihei-lorem, edo-lorem and genius-lorem), Innovenso's cross-platform fake-data and Lorem Ipsum generator for Scala 3 (JVM and Scala.js). Apply when writing or reviewing Scala that needs test or seed data (filler text, fake names, emails, addresses, dates, files, ids, sample images) through dev.taihei.mihon.LoremIpsum, or when migrating from dev.taihei.lorem. Covers the seeded and secure generators, the clock, the generator catalog, sample images, the taihei-tsuji dependency and the cross-platform name lists.
+description: How to use Taihei Mihon (dev.taihei::taihei-mihon, formerly taihei-lorem, edo-lorem and genius-lorem), Innovenso's cross-platform fake-data generator for Scala 3 (JVM and Scala.js) in many languages and scripts. Apply when writing or reviewing Scala that needs test or seed data (text, people, addresses, phone numbers, dates, files, ids, sample images) through dev.taihei.mihon.Mihon, or when migrating from dev.taihei.lorem.LoremIpsum. Covers the language-bound generator, resolution and refusal of languages, Person and Address, seeds and the clock, and the language data.
 ---
 
 # Taihei Mihon (formerly taihei-lorem)
 
-A fake-data and Lorem Ipsum generator for Scala 3, cross-compiled for the **JVM and Scala.js**.
-One class, `LoremIpsum`, with a flat catalog of generators for filler text, people, internet,
-geography, dates, files and ids, plus `SampleImages`.
+A fake-data generator for Scala 3, cross-compiled for the **JVM and Scala.js**, in many
+languages. One class, `Mihon`, bound to one language, with a flat catalog of generators for
+text, people, places, dates, files and ids; the values `Person` and `Address`; the enum
+`Gender`; and `SampleImages`.
 
 The package is `dev.taihei.mihon`. Artifacts on Maven Central: `dev.taihei::taihei-mihon`,
 published as `taihei-mihon_3` (JVM) and `taihei-mihon_sjs1_3` (Scala.js), from 5.0.0, compiled
@@ -18,46 +19,54 @@ in package `dev.taihei.lorem`, with `LoremIpsum` as an object.
 ## When to use this skill
 
 Read this whenever you write or review Scala that imports `dev.taihei.mihon.*`, or code on
-`dev.taihei.lorem.*` that moves to 5.x: test fixtures, seed data, mock-up content.
+`dev.taihei.lorem.*` that moves to 5.x: test fixtures, seed data, mock-up content, tests of an
+internationalised UI.
 
 ## The model
 
-`LoremIpsum` is a final class. Create a generator with one of two factories; there is no global
-instance:
+Create a generator with one of two factories; there is no global instance:
 
 ```scala
-import dev.taihei.mihon.LoremIpsum
+import dev.taihei.mihon.Mihon
+import dev.taihei.tsuji.Language
 
-val lorem = LoremIpsum.secure()     // SecureRandom: values do not repeat
-val fixed = LoremIpsum.seeded(42L)  // java.util.Random(42): the same values on every run
+val mihon = Mihon.secure()                    // English; SecureRandom, values do not repeat
+val fixed = Mihon.seeded(42L)                 // java.util.Random(42): the same values on every run
+val lorem = Mihon.seeded(42L, Language("la")) // Latin: Lorem Ipsum
 
-lorem.name        // "Olivia Hernandez"
-lorem.email       // "olivia.hernandez@brightwavehub.example"
-lorem.paragraph   // a paragraph of lorem filler
-lorem.localDate   // a random java.time.LocalDate
+mihon.name             // in the language's name order
+mihon.address.lines    // in the default country's format
+mihon.withLanguage(Language("la")).sentence // same generator and clock, other data
 ```
 
-Both factories take a `java.time.Clock` last, `Clock.systemUTC()` by default; `today`,
-`yesterday`, `tomorrow`, `futureDate` and `pastDate` follow it.
+Both factories take `language` (English by default) and then a `java.time.Clock`
+(`Clock.systemUTC()`); `today`, `yesterday`, `tomorrow`, `futureDate` and `pastDate` follow it.
 
 ## Reference index
 
-- **`reference/generators.md`**: the full `LoremIpsum` catalog by category and `SampleImages`,
-  with exact signatures.
-- **`reference/internals.md`**: seeds and reproducibility, the clock, the taihei-tsuji
-  dependency, the cross-platform name lists and the build layout.
+- **`reference/generators.md`**: the full `Mihon` catalog by category, `Person`, `Address`,
+  `Gender` and `SampleImages`, with exact signatures.
+- **`reference/internals.md`**: languages and their resolution, seeds and reproducibility, the
+  clock, the language data and its sources, and the build layout.
 
 ## Top gotchas
 
-- The package is **`dev.taihei.mihon`**; `dev.taihei.lorem` (4.x), `com.edoframework.lorem`
-  (3.0.0) and `genius.lorem` are the old names. `LoremIpsum.name` on the companion no longer
-  compiles: create a generator first.
-- A seed repeats **within one Mihon version and one taihei-tsuji version** only: a minor release
-  of either may change the values for a seed. Pin values in tests only with both versions pinned;
-  otherwise assert on shape (`email.contains("@")`).
-- A seeded generator shared across threads stays thread-safe but stops being reproducible.
-- `LoremIpsum.languages` is gone: use `Language.values` from `dev.taihei.tsuji`.
-- The word lists (`sources`), `SampleWordCollection` and `ResourceLoader` are internal.
-- Several generators are Belgium/EU flavoured (`phone` is `+32…`, `zipCode` 4 digits); city and
-  country names are international.
+- The package is **`dev.taihei.mihon`** and the class **`Mihon`**; `LoremIpsum` is gone, with no
+  alias. Lorem Ipsum is the text of `Language("la")`; an English generator writes English words.
+- `Mihon.seeded(seed, clock)` does not compile: the language is the second parameter, so write
+  `Mihon.seeded(seed, clock = c)`.
+- A language without data throws `IllegalArgumentException`; with a language from outside, use
+  `Mihon.resolve(lang).getOrElse(Language.English)`. `en-GB` is served by `en`; a tag naming
+  another script (`en-Cyrl`) is refused.
+- A seed repeats **within one Mihon version** only, for the same seed, language and clock; any
+  other version, a patch included, may change the values. Pin the version to assert on values;
+  otherwise assert on shape.
+- `withLanguage` views share one generator: the order of calls across views is part of the
+  sequence.
+- `firstName`/`lastName` are `givenName`/`familyName`, `zipCode` is `postalCode`, `address`
+  returns an `Address`, `description` is removed, and the random `language` is `anyLanguage`.
+- Dates are `LocalDate` values; Mihon formats none. Format them with Taihei Tsuji.
+- `email` is ASCII in every language (from the romanised name); digits are ASCII everywhere.
+- `phone` is fictional only where the country reserves a range (the United States); elsewhere
+  a number may be real.
 - `password` is fake data, not a credential: from a seeded generator it is predictable.
