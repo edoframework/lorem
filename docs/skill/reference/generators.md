@@ -1,7 +1,14 @@
-# generators — the LoremIpsum catalog
+# generators: the LoremIpsum catalog
 
-Package `dev.taihei.lorem`. `LoremIpsum` is a single object; every member is a
-generator returning a fresh random value per call.
+Package `dev.taihei.mihon`. `LoremIpsum` is a final class; every member draws a new value from the
+generator's own `java.util.Random` (seeded) or `SecureRandom` (secure).
+
+## Creating a generator
+
+| Member | Returns |
+| --- | --- |
+| `LoremIpsum.seeded(seed: Long, clock: Clock = Clock.systemUTC()): LoremIpsum` | values that repeat for the same seed, clock and Mihon version, on the JVM and Scala.js |
+| `LoremIpsum.secure(clock: Clock = Clock.systemUTC()): LoremIpsum` | values from a `SecureRandom`, which do not repeat |
 
 ## Text
 
@@ -17,7 +24,7 @@ generator returning a fresh random value per call.
 | `title: String` | ~5 capitalized words |
 | `description: String` | alias for `sentences` |
 | `slug: String` | path-like `word/word/word` |
-| `password: String` | 30 random characters |
+| `password: String` | 30 random characters (fake data, not a credential) |
 | `character: String` | one character (letter/digit/symbol) |
 
 ## People
@@ -51,7 +58,7 @@ generator returning a fresh random value per call.
 | Member | Returns |
 | --- | --- |
 | `localDate` | a random date (year in [1, 3000], any month, day of month in [1, 28]) |
-| `today` / `yesterday` / `tomorrow` | current date (UTC) ± 1 day |
+| `today` / `yesterday` / `tomorrow` | the clock's date, in the clock's zone, and ± 1 day |
 | `futureDate` / `pastDate` | today ± a random number of weeks |
 
 ## Files
@@ -66,37 +73,39 @@ generator returning a fresh random value per call.
 
 | Member | Returns |
 | --- | --- |
-| `id: String` | a UUID-shaped id (hyphens → underscores) |
+| `id: String` | a version-4 UUID drawn from the generator (hyphens → underscores) |
 | `bool: Boolean` | random boolean |
 | `int(bound: Int): Int` | random int in `[1, bound]` (never 0) |
-| `long(bound: Int): Long` | random long in `[1, bound]` |
-| `double(bound: Double): Double` | random double in `[0, bound)` |
+| `long(bound: Int): Long` | random long in `[1, bound]`; the bound is an `Int` |
+| `double(bound: Double): Double` | random double in `[0, bound)`; refuses a bound that is not positive and finite |
 | `times[A](bound: Int, f: Int => A): List[A]` | `f` applied to `1..n` for a random `n` in `[1, bound]` → one to `bound` items |
-| `languages: Array[Language]` / `language: Language` | the taihei-i18n languages |
+| `language: Language` | one of `dev.taihei.tsuji.Language.values` |
 
 ## Sample images
 
-`SampleImages` holds two base64-encoded PNGs for UI mockups/seed data:
+`SampleImages` is an object with two base64-encoded PNGs (constants, not random) for mock-ups and seed data:
 
 | Member | Returns |
 | --- | --- |
-| `SampleImages.landscape: String` | base64 landscape PNG |
-| `SampleImages.portrait: String` | base64 portrait PNG |
+| `SampleImages.landscape: String` | base64 landscape PNG, 399 by 310 pixels |
+| `SampleImages.portrait: String` | base64 portrait PNG, 160 by 240 pixels |
 
 ## Usage
 
 ```scala
-import dev.taihei.lorem.LoremIpsum
+import dev.taihei.mihon.LoremIpsum
+
+val lorem = LoremIpsum.seeded(42L)
 
 // a fake person + contact
-val person  = LoremIpsum.name                 // "Olivia Hernandez"
-val email   = LoremIpsum.email                // "olivia.hernandez@brightwavehub.example"
-val address = LoremIpsum.address              // "lorem ipsum dolor 42, 3421 Berlin"
+val person  = lorem.name                 // the same name on every run
+val email   = lorem.email
+val address = lorem.address              // "lorem ipsum dolor 42, 3421 Berlin"
 
 // filler content
-val heading = LoremIpsum.title
-val body    = LoremIpsum.htmlParagraphs       // <p>…</p><p>…</p>…
+val heading = lorem.title
+val body    = lorem.htmlParagraphs       // <p>…</p><p>…</p>…
 
 // a batch of test rows
-val rows = LoremIpsum.times(10, _ => (LoremIpsum.name, LoremIpsum.localDate))
+val rows = lorem.times(10, _ => (lorem.name, lorem.localDate))
 ```

@@ -1,4 +1,4 @@
-# Contributing to Taihei Framework lorem
+# Contributing to Taihei Mihon
 
 Thank you for helping. This file says how to build the library, how to send a change, and what
 the sign-off on every commit means.

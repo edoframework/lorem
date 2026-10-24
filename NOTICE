@@ -1,4 +1,4 @@
-Taihei Framework lorem
+Taihei Mihon
 Copyright 2026 Innovenso BV
 
 This product is developed by Innovenso BV (https://innovenso.com) as part of
@@ -15,7 +15,8 @@ The library was published earlier under other names and licences:
   "Copyright (c) 2026 Jurgen Lust / Genius Fish".
 - 3.0.0, as com.edoframework::edo-lorem, as part of the Edo Framework, under
   the Apache License 2.0.
-- 4.0.0 and later, as dev.taihei::taihei-lorem, under the Apache License 2.0.
+- 4.x, as dev.taihei::taihei-lorem, under the Apache License 2.0.
+- 5.0.0 and later, as dev.taihei::taihei-mihon, under the Apache License 2.0.
 
 The code of those earlier versions was written by Jurgen Lust, who published
 it as Genius Fish and is its sole copyright holder. He consented to its

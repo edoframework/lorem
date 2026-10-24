@@ -1,66 +1,67 @@
-# internals — randomness, deps, cross-platform & build
+# internals: seeds, the clock, dependencies, cross-platform and build
 
-Package `dev.taihei.lorem`.
+Package `dev.taihei.mihon`.
 
-## Randomness
+## Randomness and seeds
 
-All generators draw from a `java.security.SecureRandom`. Consequences:
+A `LoremIpsum` draws every value from the `java.util.Random` it was created with; there is no
+global generator.
 
-- **No seeding** — output is not reproducible across runs. Don't assert exact
-  values in tests; assert on shape (`email.contains("@")`, `name.contains(" ")`,
-  etc.). Don't count the words of a `name`: a last name can have spaces.
-- `int(bound)` / `long(bound)` return values in `[1, bound]`, each equally likely — **never 0**
-  (before 4.0.1 they never returned `bound` and returned 1 twice as often).
-- `today`, `yesterday` and `tomorrow` are not random: they follow the UTC date.
-- `double(bound)` is in `[0, bound)`.
+- `LoremIpsum.seeded(seed)` uses `new java.util.Random(seed)`. Every draw goes through the methods
+  whose algorithm `java.util.Random` specifies and Scala.js implements alike (`nextInt`,
+  `nextInt(n)`, `nextLong`, `nextBoolean`, `nextDouble`), so a seed gives the same values on the
+  JVM and on Scala.js. The test `SeededSpec` pins the values of seed 42 and runs on both.
+- The values for a seed hold within one Mihon version. A new word, a changed list or a new
+  language in taihei-tsuji changes them, and that is allowed in a minor release.
+- `LoremIpsum.secure()` uses a `java.security.SecureRandom`; values do not repeat.
+- One instance is thread-safe, but threads drawing from it in turn make it non-reproducible.
+- `int(bound)` / `long(bound)` return values in `[1, bound]`, each equally likely, never 0.
+  `double(bound)` is `nextDouble() * bound`, in `[0, bound)`.
+- `id` builds a version-4 UUID from two `nextLong` draws.
 
-## The taihei-i18n dependency
+## The clock
 
-`LoremIpsum.languages` / `LoremIpsum.language` return `dev.taihei.i18n.Language`
-values — the single tie to the [taihei-i18n](https://github.com/taiheiframework/i18n)
-library. The build depends on `dev.taihei::taihei-i18n` (JVM) /
-`dev.taihei::taihei-i18n_sjs1` (JS) from Maven Central, pinned in `V.taiheiI18n` in
-`build.mill`.
+Both factories take a `java.time.Clock`, `Clock.systemUTC()` by default. `today` is
+`LocalDate.now(clock)`, so it is the clock's date in the clock's zone; `yesterday`, `tomorrow`,
+`futureDate` and `pastDate` are relative to it. In a test, pass `Clock.fixed(...)`.
 
-## Cross-platform name lists (ResourceLoader)
+## The taihei-tsuji dependency
 
-`ResourceLoader`, `SampleWordCollection` and the objects in `dev.taihei.lorem.sources` are
-internal: public today, but not covered by the compatibility promise and private from the next
-major release. Use `LoremIpsum`.
+`LoremIpsum.language` returns a `dev.taihei.tsuji.Language`, one of `Language.values`: the
+single tie to [Taihei Tsuji](https://github.com/taiheiframework/tsuji). The build depends on
+`dev.taihei::taihei-tsuji` from Maven Central, pinned in `V.taiheiTsuji` in `build.mill`.
 
-Most word lists are embedded Scala (`sources/*.scala`). Three larger lists —
-male names, female names, surnames — are JSON, loaded through a per-platform
-`ResourceLoader`:
+## Cross-platform name lists
+
+`ResourceLoader`, `SampleWordCollection` and the objects in `dev.taihei.mihon.sources` are
+`private[mihon]`. Use `LoremIpsum`.
+
+Most word lists are Scala (`sources/*.scala`). Three larger lists (male names, female names,
+surnames) are JSON in `shared/resources/dev/taihei/mihon/sources/`, the one copy of them:
 
 | Platform | How the JSON is provided |
 | --- | --- |
-| **JVM** (`jvm/src`) | `getClass.getResourceAsStream(...)` reads `shared/resources/dev/taihei/lorem/sources/*.json` from the classpath |
-| **Scala.js** (`js/src`) | the JSON is embedded as string literals in the JS `ResourceLoader` (the browser can't read the filesystem) |
+| **JVM** (`jvm/src`) | `ResourceLoader` reads the files from the classpath |
+| **Scala.js** (`js/src`) | the build generates `EmbeddedLists` from the same files (`EmbeddedLists` in `build.mill`), and `ResourceLoader` reads it |
 
-Both fail fast (throw) on a missing/malformed resource — this is build-time data,
-so a failure means a packaging bug, not a runtime condition. If you add a new
-JSON-backed list, add the file under `shared/resources/...` **and** embed it in
-the JS `ResourceLoader`.
+The generator refuses a file in that folder that is not a non-empty JSON array of non-empty
+strings. Both loaders throw on a missing list: it is build-time data, so a failure is a packaging
+bug. `NameListsSpec` pins each list's size and hash on both platforms; a change to a list updates
+it there.
 
-## Cross-platform rules
-
-`shared/src` must compile on Scala.js. It uses `java.time` (via scala-java-time)
-and `java.security.SecureRandom` (via scalajs-java-securerandom) — both already in
-the `js` module's deps. Anything genuinely platform-specific goes in `jvm/src` or
-`js/src` as a matching object (as `ResourceLoader` does).
-
-## Build & layout
+## Build and layout
 
 ```
-shared/src/dev/taihei/lorem/                LoremIpsum, SampleImages, sources/* (data)
-shared/resources/dev/taihei/lorem/sources/  male-names.json, female-names.json, surnames.json
-jvm/src/dev/taihei/lorem/sources/           ResourceLoader (classpath)
-js/src/dev/taihei/lorem/sources/            ResourceLoader (embedded)
-shared/test/src/dev/taihei/lorem/           LoremIpsumSpec (runs on both platforms)
+shared/src/dev/taihei/mihon/                LoremIpsum, SampleImages, sources/* (data)
+shared/resources/dev/taihei/mihon/sources/  male-names.json, female-names.json, surnames.json
+jvm/src/dev/taihei/mihon/sources/           ResourceLoader (classpath)
+js/src/dev/taihei/mihon/sources/            ResourceLoader (generated EmbeddedLists)
+shared/test/src/dev/taihei/mihon/           LoremIpsumSpec, SeededSpec, NameListsSpec (both platforms)
 ```
 
 - `make compile` / `make test` cover both platforms (`./mill __.compile`,
-  `./mill __.test.testForked` → `lorem.jvm` and `lorem.js`; JS tests run on Node).
-- Single-platform: `./mill lorem.jvm.test` or `./mill lorem.js.test`.
-- Released to Maven Central from the git tag (`make release-prepare TYPE=…` →
-  `make release-finalize`), the same as every Taihei Framework library.
+  `./mill __.test.testForked`, for `mihon.jvm` and `mihon.js`; JS tests run on Node).
+- Single platform: `./mill mihon.jvm.test` or `./mill mihon.js.test`.
+- Released to Maven Central from the git tag (`make release-prepare TYPE=…`, then
+  `make release-finalize`), the same as every Taihei Framework library. MiMa compares with the
+  newest 5.x release; 5.0.0 is the first under this name.

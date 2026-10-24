@@ -1,6 +1,6 @@
-# Taihei Framework lorem skill docs
+# Taihei Mihon skill docs
 
-This directory is the source of the `taihei-lorem` Claude Code skill: how to use the library,
+This directory is the source of the `taihei-mihon` Claude Code skill: how to use the library,
 written next to the code it describes.
 
 ```
@@ -17,6 +17,6 @@ Claude reads the depth only when it needs it.
 
 ## Using the skill
 
-Copy `SKILL.md` and `reference/` into a `skills/taihei-lorem/` directory of your own plugin, or into
-`.claude/skills/taihei-lorem/` of a project that uses the library. Nothing in this repository
+Copy `SKILL.md` and `reference/` into a `skills/taihei-mihon/` directory of your own plugin, or into
+`.claude/skills/taihei-mihon/` of a project that uses the library. Nothing in this repository
 publishes the skill anywhere.
