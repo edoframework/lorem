@@ -53,14 +53,19 @@ object release extends Module {
     if (exactTag && clean) version else s"$version-SNAPSHOT"
   }
 
-  // The first release under dev.taihei. Older tags are genius-lorem and edo-lorem, under other
-  // coordinates, so there is nothing on Central to compare them with.
-  val firstRelease = "4.0.0"
+  // The first release as dev.taihei::taihei-mihon. Older tags are genius-lorem, edo-lorem and
+  // taihei-lorem, other artifacts, so there is nothing of this one on Central to compare them with.
+  val firstRelease = "5.0.0"
+
+  // The first release of the major line main is on. MiMa compares only within a major line: a
+  // major may break, so a release of the previous major is no baseline for it. Raise this when
+  // work on the next major starts on main; release-prepare TYPE=major still sets none.
+  val majorLine = "5.0.0"
 
   // The release MiMa compares with: the newest v-tag reachable from HEAD, none before
-  // firstRelease. On a release itself (an exact v-tag on a clean tree, as in CI on the tagged
-  // commit) that tag is HEAD's own, which would compare the release with itself and, before
-  // Central has synced it, fail to resolve; so there the baseline is the v-tag before it.
+  // firstRelease or majorLine. On a release itself (an exact v-tag on a clean tree, as in CI on
+  // the tagged commit) that tag is HEAD's own, which would compare the release with itself and,
+  // before Central has synced it, fail to resolve; so there the baseline is the v-tag before it.
   // MIMA_BASELINE overrides it: `none` for a major, which may break (release-prepare TYPE=major
   // sets it), or a version.
   def mimaBaseline = Task.Input {
@@ -79,6 +84,7 @@ object release extends Module {
         Option
           .when(tag.exitCode == 0)(tag.out.trim().stripPrefix("v"))
           .filter(v => Ordering.Implicits.seqOrdering[Seq, Int].gteq(numbers(v), numbers(firstRelease)))
+          .filter(v => Ordering.Implicits.seqOrdering[Seq, Int].gteq(numbers(v), numbers(majorLine)))
     }
   }
 }
