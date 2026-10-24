@@ -12,7 +12,11 @@ python3 scripts/data/docs.py            # the Downloads table of docs/data-sourc
 Downloads and Wikidata query results are cached outside the repository, in `MIHON_DATA_CACHE`
 (`~/.cache/taihei-mihon-data` by default), and recorded in `sources.lock.json` with their URL,
 size, retrieval date and SHA-256; a cached file that no longer matches its record stops the run.
-A Wikidata result is cached under a hash of its query, so a changed query asks again.
+A Wikidata result is cached under a hash of its query, so a changed query asks again. A download
+that is not in the lock file yet is refused unless `MIHON_DATA_RECORD=1` is set, so that a new
+source is a deliberate change to the lock file; ICU4J, which the scripts run, is checked against
+a SHA-256 pinned in `segment.py`. The cache must not be writable by group or others, and a
+download is at most 256 MB.
 
 | Script | Builds |
 | --- | --- |

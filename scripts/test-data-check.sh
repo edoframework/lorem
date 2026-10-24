@@ -27,10 +27,11 @@ refuses() { # name, expected message, setup...
 }
 
 accepts
-refuses "a symlink to a file outside" "not a data file of a listed language" ln -s /etc/hostname "$T/r/$D/en/x.json"
+refuses "a symlink to a file outside" "a link, or a folder above it" ln -s /etc/hostname "$T/r/$D/en/x.json"
 refuses "a symlinked data file" "a link" bash -c "mv '$T/r/$D/en/text.json' '$T/text.json' && ln -s '$T/text.json' '$T/r/$D/en/text.json'"
-refuses "a symlinked language folder" "not a data file of a listed language" bash -c "mv '$T/r/$D/la' '$T/la' && ln -s '$T/la' '$T/r/$D/la'"
-refuses "a symlinked data folder" "not a folder" bash -c "mv '$T/r/$D' '$T/data' && ln -s '$T/data' '$T/r/$D'"
+refuses "a symlinked language folder" "a link, or a folder above it" bash -c "mv '$T/r/$D/la' '$T/la' && ln -s '$T/la' '$T/r/$D/la'"
+refuses "a symlinked data folder" "a link, or a folder above it" bash -c "mv '$T/r/$D' '$T/data' && ln -s '$T/data' '$T/r/$D'"
+refuses "a symlinked folder above the data" "a link, or a folder above it" bash -c "mv '$T/r/dev/taihei' '$T/taihei' && ln -s '$T/taihei' '$T/r/dev/taihei'"
 refuses "a file outside the data folder" "only dev/taihei/mihon/data/ belongs" touch "$T/r/stray.txt"
 refuses "an extra file in a language" "not a data file of a listed language" touch "$T/r/$D/en/notes.json"
 refuses "a folder of no language" "not the folder of a listed language" mkdir "$T/r/$D/xx"

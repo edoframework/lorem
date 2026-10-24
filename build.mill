@@ -460,8 +460,16 @@ object EmbeddedData {
    * in its schema. `resources` is the module's resource root, which must hold the data folder and
    * nothing else.
    */
-  def check(resources: os.Path): Seq[os.Path] = {
+  def check(resources: os.Path, root: os.Path): Seq[os.Path] = {
     folder(resources)
+    // No link anywhere between the root and a data file: os.isLink tests only a path's last
+    // part, so each path must resolve to itself below the root's own real path.
+    val realRoot = root.toNIO.toRealPath()
+    def unlinked(p: os.Path): Unit =
+      if (p.toNIO.toRealPath() != realRoot.resolve(p.relativeTo(root).toNIO).normalize())
+        fail(p, "a link, or a folder above it that is one")
+    unlinked(resources)
+    os.walk(resources, followLinks = false).foreach(unlinked)
     val data = resources / "dev" / "taihei" / "mihon" / "data"
     // Everything in the resource root is published in the JVM jar: only the data belongs there.
     os.walk(resources, followLinks = false).foreach { p =>
@@ -522,8 +530,8 @@ object EmbeddedData {
   }
 
   /** The Scala.js source with every data file, checked and unchanged, in path order. */
-  def write(resources: os.Path, dest: os.Path): PathRef = {
-    val files = check(resources)
+  def write(resources: os.Path, root: os.Path, dest: os.Path): PathRef = {
+    val files = check(resources, root)
     val defs  = files.zipWithIndex.map { case (file, i) =>
       // The file as it is, so the tests can compare it with the one on disk (DataManifest).
       val json  = os.read(file)
@@ -559,8 +567,8 @@ object EmbeddedData {
    * length in UTF-16 units and String.hashCode (specified, so the same on the JVM and in
    * JavaScript), computed here from the files on disk.
    */
-  def manifest(resources: os.Path, dest: os.Path): PathRef = {
-    val files   = check(resources)
+  def manifest(resources: os.Path, root: os.Path, dest: os.Path): PathRef = {
+    val files   = check(resources, root)
     val entries = files.map { file =>
       val text = os.read(file)
       s"    ${literal("/" + file.relativeTo(resources).toString)} -> (${text.length}, ${text.hashCode}),"
@@ -608,13 +616,14 @@ object mihon extends Module {
 
   // Checked once for both platforms: a file outside the schema fails the build.
   def dataFiles = Task {
-    EmbeddedData.check(sharedResources().path).map(PathRef(_))
+    EmbeddedData.check(sharedResources().path, wsRoot).map(PathRef(_))
   }
 
   // The same check on another resource root, for scripts/test-data-check.sh, which proves that it
   // refuses what it must: ./mill mihon.checkData <folder>.
   def checkData(folder: String) = Task.Command {
-    EmbeddedData.check(os.Path(folder, os.pwd)).size
+    val path = os.Path(folder, os.pwd)
+    EmbeddedData.check(path, path / os.up).size
   }
 
   def licenceFiles = Task.Sources(wsRoot / "LICENSE", wsRoot / "NOTICE", wsRoot / "LICENSE-UNICODE")
@@ -625,7 +634,7 @@ object mihon extends Module {
 
   // The data manifest the shared tests compare the loaded files with, on both platforms.
   def dataManifest = Task {
-    EmbeddedData.manifest(sharedResources().path, Task.dest)
+    EmbeddedData.manifest(sharedResources().path, wsRoot, Task.dest)
   }
 
   object jvm extends TaiheiModule {
@@ -673,7 +682,7 @@ object mihon extends Module {
     // Scala.js has no classpath to read the data from, so it is compiled in. It is generated from
     // shared/resources, the one copy the JVM reads too, so the platforms cannot drift apart.
     def generatedSources = Task {
-      Seq(EmbeddedData.write(sharedResources().path, Task.dest))
+      Seq(EmbeddedData.write(sharedResources().path, wsRoot, Task.dest))
     }
 
     object test extends TaiheiJSTests {
