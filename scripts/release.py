@@ -13,8 +13,10 @@ problem on stderr, when anything is not exactly as expected.
            Check that DEST/repository holds exactly the files in DEST/SHA256SUMS, with those
            hashes, and that the zip still matches DEST/NAME.zip.sha256. Prints the ledger's
            paths, POMs last, which is the upload order.
-  pins     POM...
-           Print "artifactId version" for every dev.taihei dependency in the POMs.
+  pins     [--own "A B"] POM...
+           Print "artifactId version" for every dev.taihei dependency in the POMs. A dependency
+           on one of the --own artifacts (this library's other modules, released in the same
+           bundle) is not listed; it must have the depending POM's own version.
   no-repos JSON
            Check that Mill's `show {modules}.repositories` output names no repository.
 """
@@ -243,12 +245,19 @@ def verify(args):
 
 
 def pins(args):
+    own = set(args.own.split())
     for path in args.poms:
         root = ET.parse(path).getroot()
         for dep in root.iter(POM_NS + "dependency"):
             if (dep.findtext(POM_NS + "groupId") or "").strip() == "dev.taihei":
                 artifact = (dep.findtext(POM_NS + "artifactId") or "").strip()
                 version = (dep.findtext(POM_NS + "version") or "").strip()
+                if artifact in own:
+                    # Another module of this library: it is released with this one, in the same
+                    # bundle, so it is never a pin on an earlier release.
+                    if version != (root.findtext(POM_NS + "version") or "").strip():
+                        fail([f"{path}: dev.taihei dependency '{artifact}' '{version}' is not this release's own version"])
+                    continue
                 if not re.match(r"^[a-z0-9_.-]+$", artifact) or not re.match(r"^[0-9]+\.[0-9]+\.[0-9]+$", version):
                     fail([f"{path}: dev.taihei dependency '{artifact}' '{version}' is not a released version"])
                 print(artifact, version)
@@ -274,6 +283,7 @@ def main():
     v = sub.add_parser("verify")
     v.add_argument("--dest", required=True)
     p = sub.add_parser("pins")
+    p.add_argument("--own", default="")
     p.add_argument("poms", nargs="+")
     n = sub.add_parser("no-repos")
     n.add_argument("json")

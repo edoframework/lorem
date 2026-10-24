@@ -243,7 +243,7 @@ repo-guard:
 	./mill show "$$MODULES.pom" > "$$T/poms.json"; \
 	python3 -I -c 'import json, sys; [print(v.split(":", 3)[3]) for v in json.load(open(sys.argv[1])).values()]' "$$T/poms.json" > "$$T/poms"; \
 	mapfile -t POMS < "$$T/poms"; \
-	python3 -I scripts/release.py pins "$${POMS[@]}" | sort -u > "$$T/pins"; \
+	python3 -I scripts/release.py pins --own "$(ARTIFACTS)" "$${POMS[@]}" | sort -u > "$$T/pins"; \
 	while read -r A V; do \
 		CODE=$$(curl -q -s --proto '=https' --max-time 30 -o /dev/null -w '%{http_code}' "https://repo1.maven.org/maven2/dev/taihei/$$A/$$V/" || true); \
 		case "$$CODE" in \
