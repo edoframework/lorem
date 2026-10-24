@@ -68,11 +68,22 @@ for a in artifacts:
         f = os.path.join(d, f"{a}-{v}{suffix}")
         data = pom.format(g=group, a=a, v=v).encode() if suffix == ".pom" else os.urandom(64)
         open(f, "wb").write(data)
-        open(f + ".asc", "wb").write(b"-----BEGIN PGP SIGNATURE-----\ntest\n-----END PGP SIGNATURE-----\n")
-        for name in (f, f + ".asc")[:1]:
-            open(name + ".md5", "w").write(hashlib.md5(data).hexdigest())
-            open(name + ".sha1", "w").write(hashlib.sha1(data).hexdigest())
+        open(f + ".md5", "w").write(hashlib.md5(data).hexdigest())
+        open(f + ".sha1", "w").write(hashlib.sha1(data).hexdigest())
 EOF
+
+# Two throwaway signing keys, in a keyring of their own (a short path: gpg-agent's socket may
+# live there), standing in for the release key and for some other key.
+export GNUPGHOME; GNUPGHOME=$(mktemp -d /tmp/trt-gpg.XXXXXX); chmod 700 "$GNUPGHOME"
+trap 'gpgconf --kill gpg-agent >/dev/null 2>&1; rm -rf "$GNUPGHOME"; cleanup' EXIT
+for who in release other; do
+  gpg --batch --quiet --passphrase '' --pinentry-mode loopback --quick-gen-key "Test $who <$who@example.invalid>" ed25519 sign never 2>/dev/null \
+    || { echo "gpg cannot make a test key"; exit 1; }
+done
+KEY=$(gpg --list-keys --with-colons "release@example.invalid" | awk -F: '$1 == "fpr" { print $10; exit }')
+OTHER=$(gpg --list-keys --with-colons "other@example.invalid" | awk -F: '$1 == "fpr" { print $10; exit }')
+sign() { rm -f "$2.asc"; gpg --batch --quiet --pinentry-mode loopback --passphrase '' --local-user "$1" --armor --detach-sign -o "$2.asc" "$2" 2>/dev/null; }
+while IFS= read -r f; do sign "$KEY" "$f"; done < <(find "$SRC" -type f \( -name '*.jar' -o -name '*.pom' \) | sort)
 
 R() { python3 -I "$REPO/scripts/release.py" "$@"; }
 
@@ -109,7 +120,18 @@ printf '{"a.repositories": [], "b.repositories": []}' > "$W/none.json"
 printf '{"a.repositories": ["https://maven.pkg.github.com/x"]}' > "$W/some.json"
 expect "no-repos: modules without repositories pass" 0 "" R no-repos "$W/none.json"
 expect "no-repos: a module naming one is refused" 1 "Maven Central only" R no-repos "$W/some.json"
-expect "pins: the dev.taihei dependencies of a POM" 0 "" R pins "$(find "$SRC" -name "*-$V.pom" | head -n 1)"
+deps_pom() {
+  printf '<project xmlns="http://maven.apache.org/POM/4.0.0"><dependencies>%s</dependencies></project>\n' "$2" > "$1"
+}
+dep() { printf '<dependency><groupId>%s</groupId><artifactId>%s</artifactId><version>%s</version></dependency>' "$1" "$2" "$3"; }
+deps_pom "$W/p1.pom" "$(dep dev.taihei taihei-tsuji_3 5.0.0)$(dep dev.zio zio-json_3 1.1.1)"
+[ "$(R pins "$W/p1.pom")" = "taihei-tsuji_3 5.0.0" ] && pass "pins: a dev.taihei dependency is listed, others are not" || fail "pins: $(R pins "$W/p1.pom" 2>&1)"
+deps_pom "$W/p2.pom" "$(dep dev.taihei taihei-tsuji_3 5.0.1-SNAPSHOT)"
+expect "pins: a SNAPSHOT pin is refused" 1 "not a released version" R pins "$W/p2.pom"
+deps_pom "$W/p3.pom" "$(dep dev.taihei taihei-tsuji_3 '${tsuji.version}')"
+expect "pins: a property for a version is refused" 1 "not a released version" R pins "$W/p3.pom"
+deps_pom "$W/p4.pom" "$(dep dev.zio zio_3 2.1.27)"
+[ -z "$(R pins "$W/p4.pom")" ] && pass "pins: a POM without dev.taihei dependencies lists none" || fail "pins: listed a foreign dependency"
 
 # --- the Makefile targets against the fake registry ----------------------------------------
 G="$W/repo"; mkdir -p "$G/scripts"
@@ -137,7 +159,19 @@ for _ in $(seq 50); do curl -s --cacert "$W/cert.pem" -o /dev/null "https://loca
   printf "taihei.host=maven.pkg.github.com\ntaihei.username=test-user\ntaihei.password=ghp_testreadtoken\ntaihei.https-only=true\n" > "$W/credentials.properties" )
 export CURL_CA_BUNDLE="$W/cert.pem"
 M=(make -C "$G" --no-print-directory "GITHUB_PACKAGES_URL=https://localhost:$PA/taiheiframework/test"
-   "PUBLISH_ENV=$W/publish.env" "READ_CREDENTIALS=$W/credentials.properties")
+   "PUBLISH_ENV=$W/publish.env" "READ_CREDENTIALS=$W/credentials.properties" "RELEASE_KEY=$KEY")
+
+# The signatures, checked by publish-github before the first upload (as by release-bundle).
+use_bundle() { rm -rf "$B"; R bundle --source "$1" --dest "$B" --group $GROUP --version $V --artifacts "$ARTIFACTS" --name "$PREFIX-$V" >/dev/null; }
+cp -r "$SRC" "$W/u1"; J1=$(first_jar "$W/u1"); printf -- '-----BEGIN PGP SIGNATURE-----\nnot one\n-----END PGP SIGNATURE-----\n' > "$J1.asc"
+use_bundle "$W/u1"; expect "publish-github refuses a signature that does not verify" 1 "does not verify" "${M[@]}" publish-github
+cp -r "$SRC" "$W/u2"; J2=$(first_jar "$W/u2"); sign "$OTHER" "$J2"
+use_bundle "$W/u2"; expect "publish-github refuses a file signed by another key" 1 "not signed by the release key" "${M[@]}" publish-github
+cp -r "$SRC" "$W/u3"; J3=$(first_jar "$W/u3"); printf x >> "$J3"
+python3 -I -c 'import hashlib,sys; d=open(sys.argv[1],"rb").read(); open(sys.argv[1]+".md5","w").write(hashlib.md5(d).hexdigest()); open(sys.argv[1]+".sha1","w").write(hashlib.sha1(d).hexdigest())' "$J3"
+use_bundle "$W/u3"; expect "publish-github refuses a file changed after it was signed" 1 "does not verify" "${M[@]}" publish-github
+use_bundle "$SRC"
+expect "publish-github refuses another number of signatures" 1 "not 9" "${M[@]}" publish-github SIGNATURES=9
 
 echo "$V" > "$G/.release-embargo"
 expect "publish-github refuses a version under embargo" 1 "under embargo" "${M[@]}" publish-github
@@ -158,17 +192,22 @@ git -C "$G" checkout -q Makefile
 [ ! -e "$B/UPLOAD_STARTED" ] && [ ! -s "$W/log" ] && pass "no refusal sent anything" || fail "a refusal reached the registry"
 
 # Every command line, while the upload runs: the token is never an argument.
-( while [ ! -e "$W/stop" ]; do grep -l -a 'ghp_[t]estpublish' /proc/[0-9]*/cmdline 2>/dev/null >> "$W/argv"; done ) & WATCH=$!
+( while [ ! -e "$W/stop" ]; do
+    grep -l -a 'ghp_[t]estpublish' /proc/[0-9]*/cmdline 2>/dev/null >> "$W/argv"
+    grep -l -a 'upload-fil[e]' /proc/[0-9]*/cmdline 2>/dev/null >> "$W/curls"
+  done ) & WATCH=$!
 expect "publish-github uploads the bundle" 0 "$COUNT files uploaded" "${M[@]}" publish-github
 touch "$W/stop"; wait "$WATCH" 2>/dev/null; WATCH=""
+[ -s "$W/curls" ] && pass "the watcher saw curl's command lines" || fail "the watcher saw no curl at all (no /proc?)"
 [ ! -s "$W/argv" ] && pass "the publish token was never on a command line" || fail "the publish token was on a command line"
 [ "$(grep -c "^registry PUT .* auth=test-user:publish$" "$W/log")" = "$COUNT" ] && pass "every PUT carried the publish token" || fail "PUTs"
 [ "$(grep '^registry PUT' "$W/log" | tail -n "$(echo $ARTIFACTS | wc -w)" | grep -vc '\.pom ')" = 0 ] && pass "the POMs went last" || fail "the POMs did not go last"
 diff <(cd "$B/repository" && find . -type f | sort | xargs sha256sum) <(cd "$W/served/taiheiframework/test" && find . -type f | sort | xargs sha256sum) >/dev/null \
   && pass "the registry holds exactly the bundle's files" || fail "the registry holds other files"
 expect "publish-github never uploads a version twice" 1 "never uploaded again" "${M[@]}" publish-github
-mv "$B/UPLOAD_STARTED" "$W/started"
+mv "$B/UPLOAD_STARTED" "$W/started"; : > "$W/log"
 expect "a second upload the registry refuses stops at once" 1 "HTTP 409" "${M[@]}" publish-github
+[ "$(grep -c '^registry PUT' "$W/log")" = 1 ] && pass "no PUT followed the refusal" || fail "PUTs went on after the refusal"
 mv "$W/started" "$B/UPLOAD_STARTED"
 
 : > "$W/log"
@@ -189,6 +228,11 @@ git -C "$G" rev-parse -q --verify "refs/tags/v$V" >/dev/null && [ -d "$B" ] && p
 rm "$B/UPLOAD_STARTED"
 expect "release-abort removes a bundle that never left the machine" 0 "never left this machine" "${M[@]}" release-abort
 [ ! -e "$B" ] && pass "the bundle is gone" || fail "the bundle stayed"
+
+printf '%s\n1.2.3\n' "$V" > "$G/.release-embargo"
+expect "embargo-lift lifts one version" 0 "no longer under embargo" "${M[@]}" embargo-lift "VERSION=$V"
+[ "$(cat "$G/.release-embargo")" = "1.2.3" ] && pass "and keeps the others" || fail "embargo-lift changed the other versions"
+expect "embargo-lift refuses a version that is not under embargo" 1 "not under embargo" "${M[@]}" embargo-lift "VERSION=$V"
 
 [ "$FAILED" = 0 ] && echo "[release-test] all checks passed" || echo "[release-test] FAILED"
 exit "$FAILED"

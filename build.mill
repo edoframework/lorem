@@ -103,9 +103,13 @@ object release extends Module {
         val clean    = git("status", "--porcelain").out.text().linesIterator.forall(_.startsWith("??"))
         // HEAD^ of a root commit does not exist: then there is no tag before it and no baseline.
         val from   = if (exactTag && clean) "HEAD^" else "HEAD"
+        // Only a root commit has no HEAD^; any other git failure (a shallow clone, say) must not
+        // pass as "no baseline".
+        val hasFrom = gitAt(root, "rev-parse", "-q", "--verify", s"$from^{commit}").exitCode == 0
+        if (!hasFrom && from == "HEAD") sys.error("git cannot read HEAD: no MiMa baseline")
         val listed = git("tag", "--merged", from, "--list", "v[0-9]*", "--sort=-v:refname")
-        if (listed.exitCode != 0 && from == "HEAD")
-          sys.error(s"git tag --merged HEAD failed: ${listed.err.text().trim()}")
+        if (hasFrom && listed.exitCode != 0)
+          sys.error(s"git tag --merged $from failed: ${listed.err.text().trim()}")
         val candidates = listed.out
           .lines()
           .map(_.trim.stripPrefix("v"))

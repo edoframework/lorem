@@ -19,8 +19,10 @@ LEGACY_CENTRAL_PATH = dev/taihei/taihei-lorem_3
 # its ledger SHA256SUMS and a deterministic zip, uploads those files unchanged to the GitHub
 # Packages registry of this repository, and reads every one back. The next release train in
 # nakama takes the same files to Maven Central. Nothing is ever built or signed a second time.
-# Plain assignments, not ?=: the environment cannot point a release at another registry,
-# another key or another token file (a command-line override, as a test does, still can).
+# Plain assignments, not ?=: an environment variable of the same name does not point a release at
+# another registry, key or token file. A command-line override still does (the tests use one),
+# and so does a MAKEFLAGS in the environment: these are guards against mistakes, not against
+# someone who controls the shell that runs make.
 GITHUB_REPO = taiheiframework/mihon
 GITHUB_PACKAGES_URL = https://maven.pkg.github.com/$(GITHUB_REPO)
 BUNDLES = $(CURDIR)/.release-bundles
@@ -136,6 +138,33 @@ READ_AUTH = if [ ! -f "$(READ_CREDENTIALS)" ] || [ -L "$(READ_CREDENTIALS)" ]; t
 	if ! [[ "$$RUSER" =~ ^[A-Za-z0-9-]+$$ && "$$RTOKEN" =~ ^[A-Za-z0-9_]+$$ ]]; then \
 		echo "[ERROR] the maven.pkg.github.com entry in $(READ_CREDENTIALS) has no plain username and password"; exit 1; fi
 
+# Needs DIR, a Maven tree. Every .asc in it verifies, made by the release key (gpg's VALIDSIG
+# names the primary key's fingerprint, whatever the locale), and there are exactly SIGNATURES.
+# A subshell: it fails as a whole, so the caller can say what follows.
+SIGNATURE_CHECK = ( set -eo pipefail; N=0; \
+	ASCS=$$(find "$$DIR" -type f -name '*.asc' | LC_ALL=C sort); \
+	while IFS= read -r A; do \
+	  [ -n "$$A" ] || continue; \
+	  STATUS=$$(LC_ALL=C gpg --batch --no-tty --status-fd 1 --verify "$$A" "$${A%.asc}" 2>/dev/null) || { \
+	    echo "[signatures] $$A does not verify"; exit 1; }; \
+	  FPR=$$(printf '%s\n' "$$STATUS" | awk '$$1 == "[GNUPG:]" && $$2 == "VALIDSIG" { print $$NF }'); \
+	  if [ "$$FPR" != "$(RELEASE_KEY)" ]; then echo "[signatures] $$A is not signed by the release key $(RELEASE_KEY) ($${FPR:-no valid signature})"; exit 1; fi; \
+	  N=$$((N + 1)); \
+	done <<< "$$ASCS"; \
+	if [ "$$N" != "$(SIGNATURES)" ]; then echo "[signatures] $$N signatures by the release key, not $(SIGNATURES)"; exit 1; fi; \
+	echo "[signatures] $$N signatures by $(RELEASE_KEY)" )
+
+# Needs VERSION. A version Maven Central has already was signed for Central: building, signing or
+# uploading it again for GitHub Packages would give other signature bytes. The upload of such a
+# version (a security fix after its advisory, ADR 0003 section 7) belongs to the release train
+# tooling, which takes Central's own files; here it is refused.
+CENTRAL_GUARD = CODE=$$(curl -s --max-time 30 -o /dev/null -w '%{http_code}' "https://repo1.maven.org/maven2/$(firstword $(CENTRAL_PATHS))/$$VERSION/" || true); \
+	case "$$CODE" in \
+		404) ;; \
+		200) echo "[ERROR] $$VERSION is on Maven Central already: it is never signed or uploaded a second time from here"; exit 1;; \
+		*) echo "[ERROR] cannot tell whether $$VERSION is on Maven Central (HTTP $$CODE)"; exit 1;; \
+	esac
+
 # Needs RUSER and RTOKEN. The HTTP status of a GET of $$URL, without following a redirect.
 GITHUB_STATUS = { printf 'user = "%s:%s"\n' "$$RUSER" "$$RTOKEN" | \
 	curl -K - -s --proto '=https' --max-time 60 -o /dev/null -w '%{http_code}' "$$URL" || true; }
@@ -183,7 +212,9 @@ mima:
 # 2. every published module adds no repository to Coursier's defaults;
 # 3. every dev.taihei dependency of a published module is on Maven Central (not one that still
 #    waits for the release train on GitHub Packages).
-# CI on a clean runner, with no credentials, stays the proof that the build needs none.
+# The text scan reads tracked build files; an untracked build file is STRAY_GUARD's to refuse at a
+# release, and a Coursier mirror file in the user's home is outside this repository. CI on a
+# clean runner, with no credentials, stays the proof that the build needs none.
 repo-guard:
 	@set -euo pipefail; \
 	if [ -n "$${COURSIER_REPOSITORIES:-}$${COURSIER_MIRRORS:-}$${COURSIER_CREDENTIALS:-}" ]; then \
@@ -240,7 +271,8 @@ publishLocal:
 # snapshot repository is not enabled for the namespace. Mill hands the client's environment to a
 # daemon that is already running, credentials included, and that daemon may have been started
 # before the guard ran (by a stray build file, an IDE, another make): so the daemon is shut down
-# right after the guard, the credentialed run starts a fresh one, and it is shut down again at
+# right after the guard, the Mill commands that see the credentials run with --no-daemon (so no
+# client that starts a daemon in between can hand them one), and the daemon is shut down again at
 # the end, so that no process keeps the credentials. On the GitHub Packages route (ADR 0003) this
 # stays the direct Central upload for a security release under embargo.
 publish:
@@ -253,11 +285,11 @@ publish:
 	for V in MILL_SONATYPE_USERNAME MILL_SONATYPE_PASSWORD MILL_PGP_SECRET_BASE64 MILL_PGP_PASSPHRASE; do \
 	  if [ -z "$${!V}" ]; then echo "[publish] $$V is not set ($(RELEASE_ENV) or the environment)"; exit 1; fi; \
 	done; \
-	VERSION=$$(./mill show release.gitVersion | tr -d '"'); \
+	VERSION=$$(./mill --no-daemon show release.gitVersion | tr -d '"'); \
 	case "$$VERSION" in *-SNAPSHOT) echo "[publish] refused: $$VERSION is not a release (an exact v-tag on a clean tree)"; exit 1;; esac; \
 	$(VERSION_GUARD); \
 	echo "[publish] $$VERSION to Maven Central"; \
-	./mill mill.javalib.SonatypeCentralPublishModule/ --bundleName "$(BUNDLE_PREFIX)-$$VERSION"
+	./mill --no-daemon mill.javalib.SonatypeCentralPublishModule/ --bundleName "$(BUNDLE_PREFIX)-$$VERSION"
 
 # The same bundle, signed, written to out/ instead of uploaded: what Central would receive. Mill
 # names a bundle only for a release version, so a SNAPSHOT dry run writes it unnamed.
@@ -268,9 +300,9 @@ publish-dry-run:
 	trap './mill shutdown >/dev/null 2>&1 || true' EXIT; \
 	$(MODULE_GUARD); \
 	if [ -f "$(RELEASE_ENV)" ]; then . "$(RELEASE_ENV)"; fi; \
-	VERSION=$$(./mill show release.gitVersion | tr -d '"'); \
+	VERSION=$$(./mill --no-daemon show release.gitVersion | tr -d '"'); \
 	case "$$VERSION" in *-SNAPSHOT) BUNDLE=();; *) BUNDLE=(--bundleName "$(BUNDLE_PREFIX)-$$VERSION");; esac; \
-	MILL_TESTS_PUBLISH_DRY_RUN=1 ./mill mill.javalib.SonatypeCentralPublishModule/ "$${BUNDLE[@]}"; \
+	MILL_TESTS_PUBLISH_DRY_RUN=1 ./mill --no-daemon mill.javalib.SonatypeCentralPublishModule/ "$${BUNDLE[@]}"; \
 	echo "[publish-dry-run] bundle in $(DRY_RUN_DIR)"
 
 # Refuses when the version at HEAD is not a release, or when any of its artifacts is already on
@@ -328,22 +360,17 @@ release-preflight:
 release-bundle:
 	@set -eo pipefail; \
 	$(TAG_VERSION); \
-	if [ -e "$$B" ]; then echo "[bundle] $$B exists already: a release is built and signed once"; exit 1; fi; \
+	if [ -e "$$B" ] || [ -L "$$B" ]; then echo "[bundle] $$B exists already: a release is built and signed once"; exit 1; fi; \
+	$(CENTRAL_GUARD); \
 	$(MAKE) --no-print-directory publish-dry-run; \
 	mkdir -p "$(BUNDLES)"; \
-	python3 -I scripts/release.py bundle --source "$(DRY_RUN_DIR)/$(BUNDLE_PREFIX)-$$VERSION" --dest "$$B" --group "$(ARTIFACT_GROUP)" \
-		--version "$$VERSION" --artifacts "$(ARTIFACTS)" --pom-only "$(POM_ONLY)" --name "$(BUNDLE_PREFIX)-$$VERSION"; \
-	N=0; \
-	while read -r SUM P; do \
-	  case "$$P" in *.asc) ;; *) continue;; esac; \
-	  STATUS=$$(LC_ALL=C gpg --batch --no-tty --status-fd 1 --verify "$$B/repository/$$P" "$$B/repository/$${P%.asc}" 2>/dev/null) || { \
-	    echo "[bundle] the signature $$P does not verify"; exit 1; }; \
-	  FPR=$$(printf '%s\n' "$$STATUS" | awk '$$1 == "[GNUPG:]" && $$2 == "VALIDSIG" { print $$NF }'); \
-	  if [ "$$FPR" != "$(RELEASE_KEY)" ]; then echo "[bundle] $$P is not signed by the release key $(RELEASE_KEY) ($${FPR:-no valid signature})"; exit 1; fi; \
-	  N=$$((N + 1)); \
-	done < "$$B/SHA256SUMS"; \
-	if [ "$$N" != "$(SIGNATURES)" ]; then echo "[bundle] $$N signatures by the release key, not $(SIGNATURES)"; exit 1; fi; \
-	echo "[bundle] $$N signatures by $(RELEASE_KEY)"; \
+	rm -rf -- "$$B.partial"; \
+	python3 -I scripts/release.py bundle --source "$(DRY_RUN_DIR)/$(BUNDLE_PREFIX)-$$VERSION" --dest "$$B.partial" --group "$(ARTIFACT_GROUP)" \
+		--version "$$VERSION" --artifacts "$(ARTIFACTS)" --pom-only "$(POM_ONLY)" --name "$(BUNDLE_PREFIX)-$$VERSION" || { \
+		echo "[bundle] refused; nothing left the machine. Fix the cause, then make release-abort and prepare again"; exit 1; }; \
+	DIR="$$B.partial/repository"; \
+	$(SIGNATURE_CHECK) || { echo "[bundle] refused; nothing left the machine. Fix the cause, then make release-abort and prepare again"; exit 1; }; \
+	mv -T -- "$$B.partial" "$$B"; \
 	echo "[bundle] $$B"; \
 	echo "[bundle] $$(cat "$$B/$(BUNDLE_PREFIX)-$$VERSION.zip.sha256")"
 
@@ -353,6 +380,8 @@ release-bundle:
 # stays a shell variable and reaches curl as a config on stdin (curl -K -), never as an argument
 # or in the environment, and no other target and no Mill process sees it. A version is uploaded
 # once: from the first file on it is final, and an interrupted upload is never started again.
+# Before the first file it checks the bundle once more: the ledger, every signature by the release
+# key, and that Maven Central does not have the version yet.
 publish-github:
 	@set -eo pipefail; \
 	$(TAG_VERSION); \
@@ -362,6 +391,8 @@ publish-github:
 	  echo "[publish-github] the upload of $$VERSION started before ($$(cat "$$B/UPLOAD_STARTED")): the version is final on GitHub Packages."; \
 	  echo "                 It is never uploaded again; make verify-github shows what is there."; exit 1; fi; \
 	python3 -I scripts/release.py verify --dest "$$B" > "$$B/upload-order"; \
+	DIR="$$B/repository"; $(SIGNATURE_CHECK); \
+	$(CENTRAL_GUARD); \
 	F="$(PUBLISH_ENV)"; \
 	if [ ! -f "$$F" ] || [ -L "$$F" ] || [ ! -O "$$F" ] || ! python3 -I -c 'import os, sys; sys.exit(os.stat(sys.argv[1]).st_mode & 0o077)' "$$F"; then \
 	  echo "[publish-github] $$F must be a file of yours with mode 600 (the dotfiles write it)"; exit 1; fi; \
@@ -714,6 +745,7 @@ release-abort:
 			echo "        It is never deleted or replaced, and its tag and bundle stay. Nothing was undone."; \
 			echo "        The CTO and the CISO decide what follows, normally the next patch version."; exit 1; \
 		fi; \
+		rm -rf -- "$$B.partial"; \
 		if [ -e "$$B" ]; then rm -rf -- "$$B"; echo "[OK] Removed the bundle of v$$NEW, which never left this machine"; fi; \
 		git tag -d "v$$NEW" 2>/dev/null || true; \
 		if [ "$$(git log -1 --pretty=%s)" = "Add release notes for version $$NEW" ]; then \
