@@ -53,8 +53,8 @@ Both factories take a `java.time.Clock` last, `Clock.systemUTC()` by default; `t
   (3.0.0) and `genius.lorem` are the old names. `LoremIpsum.name` on the companion no longer
   compiles: create a generator first.
 - A seed repeats **within one Mihon version and one taihei-tsuji version** only: a minor release
-  of either may change the values for a seed. Pin values in tests only next to a pinned version; otherwise assert on shape
-  (`email.contains("@")`).
+  of either may change the values for a seed. Pin values in tests only with both versions pinned;
+  otherwise assert on shape (`email.contains("@")`).
 - A seeded generator shared across threads stays thread-safe but stops being reproducible.
 - `LoremIpsum.languages` is gone: use `Language.values` from `dev.taihei.tsuji`.
 - The word lists (`sources`), `SampleWordCollection` and `ResourceLoader` are internal.

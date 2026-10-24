@@ -218,7 +218,7 @@ end LoremIpsum
 object LoremIpsum:
 
   /**
-   * A generator whose values repeat: the same seed, clock, mihon version and taihei-tsuji version
+   * A generator whose values repeat: the same seed, clock, Mihon version and taihei-tsuji version
    * give the same values, in the same order, on the JVM and on Scala.js. A minor release of either
    * may change the values for a seed (a new word, a changed list, a new language for
    * [[LoremIpsum.language]]); assert on the values of a seed only with both versions pinned.
