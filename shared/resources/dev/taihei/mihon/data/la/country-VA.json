@@ -5,7 +5,7 @@
   "postalCode": "00120",
   "regions": [],
   "cities": [
-    {"name": "Civitas Vaticana", "weight": 1}
+    {"name":"Civitas Vaticana","weight":1}
   ],
   "streets": ["Via {familyFemale} {number}", "Via {familyFemale} {small}", "Clivus {familyFemale} {small}"],
   "phone": "+39 06 698#####",

@@ -29,6 +29,28 @@ CAST = {"Tom", "Mary", "John", "Jack", "Ken", "Mike", "Bob", "Jim", "Tony", "Bil
         "Alice", "Lucy", "Emily", "Ziri", "Rima", "Sami", "Layla", "Fadil", "Dania", "Yanni", "Skura",
         "Mennad", "Baya", "Tatoeba", "Muiriel", "London", "Boston", "Tokyo", "Paris", "John"}
 
+# The same cast in the uncased scripts, which no case rule can find.
+CAST_NATIVE = {
+    "ja": {"トム", "メアリー", "メアリ", "ジョン", "ケン", "ジャック", "ボブ", "マイク", "アリス", "ルーシー", "ポール"},
+    "zh-Hans": {"汤姆", "玛丽", "约翰", "杰克", "迈克", "肯", "鲍勃", "爱丽丝", "露西"},
+    "zh-Hant": {"湯姆", "瑪麗", "約翰", "傑克", "邁克", "肯", "鮑勃", "愛麗絲", "露西"},
+    "ko": {"톰", "톰은", "톰이", "톰을", "톰의", "톰에게", "메리", "메리는", "메리가", "존", "잭"},
+    "th": {"ทอม", "แมรี่", "จอห์น", "แจ็ค", "ไมค์"},
+    "ar": {"توم", "ماري", "جون", "جاك", "سامي", "ليلى", "فاضل", "زيري", "ريما", "ياني", "يني", "ريمة", "مناد", "بايا", "سكورا", "دانيا"},
+    "he": {"טום", "מרי", "ג'ון", "ג׳ון", "ג'ק", "סמי", "לילה"},
+    "hi": {"टॉम", "मैरी", "जॉन", "जैक", "सामी", "लैला"},
+}
+
+# Japanese segments split inflections into pieces of a kana or two; a word that starts with a
+# small kana, ん or ー is such a piece, and a single hiragana is one unless it is a particle.
+JA_PARTICLES = set("はがをにのでとへもやかよねな")
+JA_NO_START = set("ぁぃぅぇぉっゃゅょゎんァィゥェォッャュョヮンー")
+
+
+def _ja_piece(token):
+    return token[0] in JA_NO_START or (len(token) == 1 and "\u3041" <= token <= "\u3096" and token not in JA_PARTICLES)
+
+
 SCRIPT_WORDS = {
     "Latn": ("LATIN",), "Cyrl": ("CYRILLIC",), "Grek": ("GREEK",), "Arab": ("ARABIC",),
     "Hebr": ("HEBREW",), "Deva": ("DEVANAGARI",), "Thai": ("THAI",),
@@ -77,9 +99,23 @@ def sentences(conf, tag):
             yield unicodedata.normalize("NFC", parts[2])
 
 
-# A run of word characters and apostrophes; one that holds a digit or an underscore ("5th") is
-# not a word, and neither is any part of it.
-TOKEN = re.compile(r"[\w'\u2019\u02bc]+")
+APOSTROPHES = "'\u2019\u02bc"
+
+
+def _runs(sentence):
+    """Runs of letters, combining marks (Arabic harakat, Devanagari matras), digits, underscores
+    and apostrophes: a run that holds a digit or an underscore ("5th") is not a word, and neither
+    is any part of it."""
+    run = []
+    for ch in sentence + " ":
+        cat = unicodedata.category(ch)
+        if cat[0] in "LMN" or ch == "_" or ch in APOSTROPHES:
+            run.append(ch)
+        elif run:
+            yield "".join(run)
+            run = []
+
+
 # Words a language capitalises wherever they stand, which the proper-noun rule would drop.
 ALWAYS_CAPITALISED = {"en": {"i": "I"}}
 
@@ -88,7 +124,7 @@ def tokens_of(sentence, conf, tag):
     if conf["script"] in SEGMENTED:
         return None
     out = []
-    for t in TOKEN.findall(sentence):
+    for t in _runs(sentence):
         t = t.strip("'\u2019\u02bc")
         if not t or any(c.isdigit() or c == "_" for c in t):
             continue
@@ -102,12 +138,12 @@ def tokens_of(sentence, conf, tag):
     return out
 
 
-def words(tag, conf, names, script_filter=None, limit=1500):
+def words(tag, conf, names, script_filter=None, limit=1300):
     """[[word, weight]], the `limit` most frequent words, most frequent first."""
     script = conf["script"]
     cased = script in CASED
     bad = badwords(tag)
-    excluded = set(names) | CAST
+    excluded = set(names) | CAST | CAST_NATIVE.get(tag, set())
     total = collections.Counter()
     non_initial = collections.Counter()
     non_initial_lower = collections.Counter()
@@ -133,6 +169,8 @@ def words(tag, conf, names, script_filter=None, limit=1500):
     ranked = []
     for key, count in total.most_common():
         if key in lowered_names or key in bad or lower(key, tag) in bad:
+            continue
+        if tag == "ja" and _ja_piece(key):
             continue
         if script in SEGMENTED and any(len(b) >= 2 and b in key for b in bad):
             continue

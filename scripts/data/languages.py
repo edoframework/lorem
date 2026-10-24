@@ -46,10 +46,10 @@ LANGUAGES = {
     "ar": dict(script="Arab", country="EG", tatoeba="ara", wikidata="ar", question="؟", comma="،"),
     "he": dict(script="Hebr", country="IL", tatoeba="heb", wikidata="he"),
     "hi": dict(script="Deva", country="IN", tatoeba="hin", wikidata="hi", full_stop="।"),
-    # Thai writes no space between words and no final stop; a space separates sentences and
-    # clauses, so the comma is a space too.
+    # Thai writes no space between words and no final stop, and a space between sentences; it has
+    # no comma of its own.
     "th": dict(script="Thai", country="TH", tatoeba="tha", wikidata="th", full_stop="",
-               question="", exclamation="", comma=" ", words_per_sentence=[6, 16]),
+               question="", exclamation="", comma="", word_sep="", words_per_sentence=[6, 16]),
     "zh-Hans": dict(CJK, script="Hans", country="CN", tatoeba="cmn", wikidata="zh-hans", cldr="zh"),
     "zh-Hant": dict(CJK, script="Hant", country="TW", tatoeba="cmn", wikidata="zh-hant", cldr="zh-Hant"),
     "ja": dict(CJK, script="Jpan", country="JP", tatoeba="jpn", wikidata="ja", comma="、"),

@@ -1,7 +1,16 @@
 {
   "languages": [
-    {"tag": "en", "script": "Latn", "country": "US"},
-    {"tag": "la", "script": "Latn", "country": "VA"}
+    {"tag":"ar","script":"Arab","country":"EG"},
+    {"tag":"en","script":"Latn","country":"US"},
+    {"tag":"ja","script":"Jpan","country":"JP"},
+    {"tag":"la","script":"Latn","country":"VA"},
+    {"tag":"ru","script":"Cyrl","country":"RU"},
+    {"tag":"th","script":"Thai","country":"TH"},
+    {"tag":"zh-Hans","script":"Hans","country":"CN"}
   ],
-  "aliases": []
+  "aliases": [
+    ["zh","zh-Hans"],
+    ["zh-CN","zh-Hans"],
+    ["zh-SG","zh-Hans"]
+  ]
 }

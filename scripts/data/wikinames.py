@@ -1,0 +1,216 @@
+"""Given and family names from Wikidata (CC0): the names most often borne by people with the
+citizenship of a language's default country, counted per name; only those counts and the names'
+own labels are kept, nothing about any person. A given name goes on the female or male list by
+the gender of its bearers (both lists when at least a quarter are of each); the label in the
+language is the name, the English label its romanised form unless a rule in romanize.py gives one.
+"""
+
+import collections
+
+import romanize
+import text
+import unihan
+from common import sparql
+from languages import COUNTRY_QID
+
+FEMALE, MALE = "http://www.wikidata.org/entity/Q6581072", "http://www.wikidata.org/entity/Q6581097"
+
+
+def _qid(uri):
+    return uri.rsplit("/", 1)[1]
+
+
+def _counts(kind, country, prop, by_gender):
+    qid = COUNTRY_QID[country]
+    if by_gender:
+        rows = sparql(f"{kind}-{country}", f"""
+            SELECT ?name ?g (COUNT(?p) AS ?c) WHERE {{
+              ?p wdt:P27 wd:{qid}; wdt:{prop} ?name; wdt:P21 ?g .
+              FILTER(?g IN (wd:Q6581072, wd:Q6581097))
+            }} GROUP BY ?name ?g ORDER BY DESC(?c) LIMIT 1500""")
+        out = collections.defaultdict(lambda: [0, 0])
+        for r in rows:
+            out[_qid(r["name"])][0 if r["g"] == FEMALE else 1] += int(r["c"])
+        return out
+    rows = sparql(f"{kind}-{country}", f"""
+        SELECT ?name (COUNT(?p) AS ?c) WHERE {{ ?p wdt:P27 wd:{qid}; wdt:{prop} ?name }}
+        GROUP BY ?name ORDER BY DESC(?c) LIMIT 800""")
+    return {_qid(r["name"]): int(r["c"]) for r in rows}
+
+
+def _labels(kind, country, lang, ids):
+    rows = []
+    ids = sorted(ids)
+    for start in range(0, len(ids), 400):
+        chunk = " ".join("wd:" + i for i in ids[start:start + 400])
+        rows += sparql(f"{kind}-labels-{country}-{lang}-{start}", f"""
+            SELECT ?item ?label ?native ?en ?kana ?female WHERE {{
+              VALUES ?item {{ {chunk} }}
+              OPTIONAL {{ ?item rdfs:label ?label . FILTER(LANG(?label) = "{lang}") }}
+              OPTIONAL {{ ?item wdt:P1705 ?native . FILTER(LANG(?native) = "{lang}") }}
+              OPTIONAL {{ ?item rdfs:label ?en . FILTER(LANG(?en) = "en") }}
+              OPTIONAL {{ ?item wdt:P1814 ?kana }}
+              OPTIONAL {{ ?item wdt:P2521 ?female . FILTER(LANG(?female) = "{lang}") }}
+            }}""")
+    out = {}
+    for r in sorted(rows, key=lambda r: (r["item"], r.get("label", ""), r.get("en", ""), r.get("kana", ""), r.get("female", ""))):
+        r = dict(r)
+        # The native label (P1705) where the item has no label in the language.
+        if "label" not in r and "native" in r:
+            r["label"] = r["native"]
+        out.setdefault(_qid(r["item"]), r)
+    return out
+
+
+def _name_ok(name, script):
+    letters = name.replace(" ", "").replace("-", "").replace("'", "").replace("’", "")
+    return bool(letters) and text.in_script(letters, script)
+
+
+def _latin_ok(s):
+    return bool(s) and all(c.isalpha() or c in " -'’" for c in s) and \
+        all(ord(c) < 0x250 or 0x1E00 <= ord(c) <= 0x1EFF for c in s)
+
+
+def _form(tag, script, name, en, kana, family_name=False):
+    """The data entry for a name: its latin, ascii and reading where they differ, or None when it
+    cannot be romanised."""
+    entry = {"name": name}
+    if script == "Latn":
+        latin = name
+    elif script == "Cyrl":
+        latin = romanize.cyrillic(name, tag)
+    elif script == "Grek":
+        latin = romanize.greek(name)
+    elif script == "Kore":
+        latin = en if _latin_ok(en) else romanize.hangul(name)
+    elif script == "Jpan":
+        if not _latin_ok(en):
+            return None
+        latin = romanize.passport_hepburn(en)
+        reading = romanize.hiragana_to_katakana(kana) if kana else romanize.hepburn_to_katakana(en)
+        if not reading or not text.in_script(reading, "Jpan"):
+            return None
+        entry["reading"] = reading
+    elif script in ("Hans", "Hant"):
+        # Pinyin without tone marks; a family name by Unihan's readings, as in a passport.
+        if family_name:
+            latin = unihan.pinyin(name)
+        else:
+            latin = romanize.ascii_fold(en) if _latin_ok(en) else None
+        if not latin or not latin.isascii() or not latin.isalpha():
+            return None
+    else:
+        if not _latin_ok(en):
+            return None
+        latin = en
+    if latin != name:
+        entry["latin"] = latin
+    ascii_form = romanize.ascii_fold(latin)
+    if ascii_form != latin:
+        entry["ascii"] = ascii_form
+    if not all(" " <= c <= "~" for c in entry.get("ascii", latin)):
+        return None
+    return entry
+
+
+# The writing system (P282) of the name items of a language whose people carry too few name
+# statements on Wikidata.
+WRITING_SYSTEM = {"th": "Q236376"}
+
+
+def _native(kind, cls, lang):
+    """Name items of the class whose native label (P1705) is in the language, or that are written
+    in its script, for a country whose people carry too few name statements on Wikidata: each
+    counts as borne once."""
+    script = WRITING_SYSTEM.get(lang)
+    by_script = f"UNION {{ ?item wdt:P31 wd:{cls}; wdt:P282 wd:{script} }}" if script else ""
+    rows = sparql(f"{kind}-native-{lang}", f"""
+        SELECT DISTINCT ?item WHERE {{
+          {{ ?item wdt:P31 wd:{cls}; wdt:P1705 ?n . FILTER(LANG(?n) = "{lang}") }} {by_script}
+        }}""")
+    return [_qid(r["item"]) for r in rows]
+
+
+def given(tag, conf, limit=120):
+    country, script, lang = conf["country"], conf["script"], conf["wikidata"]
+    counts = _counts("given", country, "P735", True)
+    if len(counts) < 2 * limit:
+        # A given name without counted bearers gets a weight of one, in the list of its class.
+        for cls, i in (("Q11879590", 0), ("Q12308941", 1)):
+            for item in _native(f"given-{cls}", cls, lang):
+                if item not in counts:
+                    counts[item] = [1, 0] if i == 0 else [0, 1]
+    labels = _labels("given", country, lang, counts)
+    lists = {"female": [], "male": []}
+    for item, (f, m) in sorted(counts.items(), key=lambda kv: (-sum(kv[1]), kv[0])):
+        r = labels.get(item, {})
+        name = r.get("label")
+        if not name or not _name_ok(name, script):
+            continue
+        if script in ("Hans", "Hant") and len(name) > 2:
+            continue  # a transcribed foreign name, such as 约瑟夫
+        entry = _form(tag, script, name, r.get("en"), r.get("kana"))
+        if not entry:
+            continue
+        total = f + m
+        for key, n in (("female", f), ("male", m)):
+            if n * 4 >= total and len(lists[key]) < limit and name not in {e["name"] for e in lists[key]}:
+                lists[key].append(dict(entry, weight=n))
+    return lists
+
+
+FEMALE_RULES = {
+    "ru": [("ский", "ская"), ("цкий", "цкая"), ("ой", "ая"), ("ов", "ова"), ("ев", "ева"), ("ёв", "ёва"), ("ин", "ина"), ("ын", "ына")],
+    "bg": [("ски", "ска"), ("ов", "ова"), ("ев", "ева"), ("ин", "ина")],
+    "uk": [("ський", "ська"), ("цький", "цька"), ("ов", "ова"), ("ев", "ева"), ("ін", "іна"), ("ин", "ина")],
+    "pl": [("ski", "ska"), ("cki", "cka"), ("dzki", "dzka")],
+    "el": [("ος", "ου"), ("ης", "η"), ("ας", "α"), ("ός", "ού"), ("ής", "ή"), ("άς", "ά")],
+}
+
+
+def _female(tag, name, wikidata_female):
+    if wikidata_female and wikidata_female != name:
+        return wikidata_female
+    for male, female in FEMALE_RULES.get(tag, []):
+        if name.endswith(male):
+            return name[: -len(male)] + female
+    return None
+
+
+def family(tag, conf, limit=160):
+    country, script, lang = conf["country"], conf["script"], conf["wikidata"]
+    counts = _counts("family", country, "P734", False)
+    if lang in WRITING_SYSTEM:
+        for item in _native("family-Q101352", "Q101352", lang):
+            counts.setdefault(item, 1)
+    labels = _labels("family", country, lang, counts)
+    out, seen = [], set()
+    for item, n in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0])):
+        r = labels.get(item, {})
+        name = r.get("label")
+        if not name or name in seen or not _name_ok(name, script):
+            continue
+        if script in ("Hans", "Hant") and len(name) > 2:
+            continue  # a transcribed foreign name
+        entry = _form(tag, script, name, r.get("en"), r.get("kana"), family_name=True)
+        if not entry:
+            continue
+        if tag in FEMALE_RULES:
+            female = _female(tag, name, r.get("female"))
+            if female:
+                form = _form(tag, script, female, None if script != "Latn" else female, None)
+                if script == "Latn":
+                    form = {"name": female, **({"ascii": romanize.ascii_fold(female)} if romanize.ascii_fold(female) != female else {})}
+                if form:
+                    entry["female"] = form
+        out.append(dict(entry, weight=n))
+        seen.add(name)
+        if len(out) == limit:
+            break
+    return out
+
+
+def names(tag, conf):
+    g = given(tag, conf)
+    return {"female": g["female"], "male": g["male"], "family": family(tag, conf)}

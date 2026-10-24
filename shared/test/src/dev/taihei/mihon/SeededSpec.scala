@@ -30,16 +30,38 @@ object SeededSpec extends ZIOSpecDefault:
   // Scala.js, which this test proves by running on both. A change to the data or to how a
   // generator draws changes them: update them in that change, and say so in the release notes.
   private val golden: Map[String, List[String]] = Map(
+    "ar" -> List(
+      "بإمكانها يحاول كيف أنتَ سيارته تبقى جيدة منهم الصباح البشر وحده ذاك؟",
+      "جانا حسين",
+      "Jana Hussein",
+      "-",
+      "muhammad.shaheen@lunarbytefusion.example",
+      "180 شارع الثورة، السويس، 77233، مصر",
+      "+20 15 3754 7573",
+      "ما تكن بلد حياتي",
+      "خطر",
+    ),
     "en" -> List(
-      "Date still as somebody extremely other pick brother go this clothes life?",
+      "Pretty has dangerous themselves color knew manager whether everything world their week?",
       "Virginia Wood",
       "Virginia Wood",
       "-",
       "charles.white@lunarbytefusion.example",
       "180 Cedar Lane, Greensboro, North Carolina 77233, United States",
       "+1 737 555-0154",
-      "Father City Soup",
-      "and",
+      "Safe Into Many",
+      "of",
+    ),
+    "ja" -> List(
+      "よけたと国民そう人口はなるちょうど着く去年。",
+      "鈴木さちこ",
+      "Suzuki Sachiko",
+      "スズキ サチコ",
+      "sakamoto.nao@lunarbytefusion.example",
+      "日本 〒057-7233 市原市栄町30-26",
+      "+81 90-3754-7573",
+      "警察両親成長なる",
+      "立ち",
     ),
     "la" -> List(
       "Quas rutrum ferri amet eloquentiam sanctus lorem mollis referrentur habitasse graecis alterum?",
@@ -51,6 +73,39 @@ object SeededSpec extends ZIOSpecDefault:
       "+39 06 69833495",
       "Suavitate vituperata noluisse efficiantur",
       "inceptos",
+    ),
+    "ru" -> List(
+      "Ты все моём об умер зовут окно надо будет несмотря мог ли?",
+      "Марина Щербакова",
+      "Marina Shcherbakova",
+      "-",
+      "aleksandr.abramov@lunarbytefusion.example",
+      "ул. Лесная, д. 26, Сочи, 372334, Россия",
+      "+7 937 547-57-33",
+      "Рядом",
+      "туда",
+    ),
+    "th" -> List(
+      "ธรรมชาติหิมะตรวจสนามที่ผ้าแทนพื้นครับแล้วใบ",
+      "วิไลลักษณ์ อำพันสุวรรณ",
+      "Vilailak Ampunsuwan",
+      "-",
+      "chayanit.saengsila@lunarbytefusion.example",
+      "114 ถนนรัชดาภิเษก นนทบุรี 35772 ไทย",
+      "+66 84 953 7547",
+      "นะ",
+      "กว่า",
+    ),
+    "zh-Hans" -> List(
+      "信什么蛋糕吧放在的总二物迷路过。",
+      "高璇",
+      "Gao Xuan",
+      "-",
+      "li.shuzhen@lunarbytefusion.example",
+      "中国 357723 无锡市 中山路165号",
+      "+86 195 3754 7573",
+      "什么早饭不在外语",
+      "变",
     ),
   )
 
@@ -64,7 +119,7 @@ object SeededSpec extends ZIOSpecDefault:
       )*
     ),
     test("the same seed and language give the same values") {
-      assertTrue(run(Mihon.seeded(7L, Language("la"))) == run(Mihon.seeded(7L, Language("la"))))
+      assertTrue(run(Mihon.seeded(7L, Language("ja"))) == run(Mihon.seeded(7L, Language("ja"))))
     },
     test("another seed gives other values") {
       assertTrue(run(Mihon.seeded(7L)) != run(Mihon.seeded(8L)))

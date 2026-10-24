@@ -11,7 +11,13 @@ object LanguagesSpec extends ZIOSpecDefault:
 
   // Code point ranges, inclusive, of the scripts. Explicit, so the check does not depend on a
   // platform's Unicode tables (Character.UnicodeScript is not on Scala.js).
-  private val Latin = Seq(0x41 -> 0x5a, 0x61 -> 0x7a, 0xc0 -> 0x24f, 0x300 -> 0x36f, 0x1e00 -> 0x1eff)
+  private val Latin    = Seq(0x41 -> 0x5a, 0x61 -> 0x7a, 0xc0 -> 0x24f, 0x300 -> 0x36f, 0x1e00 -> 0x1eff)
+  private val Cyrillic = Seq(0x400 -> 0x4ff)
+  private val Arabic   = Seq(0x600 -> 0x6ff, 0x750 -> 0x77f)
+  private val Thai     = Seq(0xe00 -> 0xe7f)
+  // Han ideographs, with the iteration mark 々 that Japanese names use.
+  private val Han      = Seq(0x3005 -> 0x3007, 0x3400 -> 0x4dbf, 0x4e00 -> 0x9fff, 0xf900 -> 0xfaff, 0x20000 -> 0x3134f)
+  private val Kana     = Seq(0x3040 -> 0x309f, 0x30a0 -> 0x30ff)
 
   // What a language's output may hold.
   final case class Conventions(
@@ -40,6 +46,41 @@ object LanguagesSpec extends ZIOSpecDefault:
   private val conventions: Map[String, Conventions] = Map(
     "en" -> latin("US", "[0-9]{5}", "\\+1 [2-9][0-9]{2} 555-01[0-9]{2}", Set("“", "”")),
     "la" -> latin("VA", "00120", "\\+39 06 698[0-9]{5}", Set("“", "”")),
+    "ru" -> Conventions(
+      Cyrillic,
+      west ++ Set("«", "»"),
+      west ++ Set("«", "»"),
+      true,
+      false,
+      " ",
+      "RU",
+      "[1-9][0-9]{5}",
+      "\\+7 9[0-9]{2} [0-9]{3}-[0-9]{2}-[0-9]{2}",
+    ),
+    "ar" -> {
+      val marks = Set(".", "؟", "!", "،", "”", "“")
+      Conventions(Arabic, marks, marks, true, false, " ", "EG", "[0-9]{5}", "\\+20 1[0-9] [0-9]{4} [0-9]{4}")
+    },
+    // Thai: no space within a sentence, no full stop, no question or exclamation mark, no comma.
+    "th" -> Conventions(
+      Thai,
+      Set("“", "”"),
+      Set("“", "”"),
+      false,
+      false,
+      " ",
+      "TH",
+      "[1-9][0-9]{4}",
+      "\\+66 8[0-9] [0-9]{3} [0-9]{4}",
+    ),
+    "ja" -> {
+      val marks = Set("。", "？", "！", "、", "「", "」")
+      Conventions(Han ++ Kana, marks, marks, false, true, "", "JP", "[0-9]{3}-[0-9]{4}", "\\+81 90-[0-9]{4}-[0-9]{4}")
+    },
+    "zh-Hans" -> {
+      val marks = Set("。", "？", "！", "，", "“", "”")
+      Conventions(Han, marks, marks, false, true, "", "CN", "[1-9][0-9]{5}", "\\+86 1[0-9]{2} [0-9]{4} [0-9]{4}")
+    },
   )
 
   private def codePoints(s: String): Seq[Int] =
@@ -122,6 +163,18 @@ object LanguagesSpec extends ZIOSpecDefault:
         Mihon.resolve(Language("la-VA")) == Some(Language("la")),
         Mihon.seeded(1L, Language("en-US")).language == Language.English,
         Mihon.resolve(Language("en-u-ca-gregory")) == Some(Language.English),
+        Mihon.resolve(Language("ja-JP")) == Some(Language("ja")),
+        Mihon.resolve(Language("ru-UA")) == Some(Language("ru")),
+      )
+    },
+    test("Chinese is found by its aliases and by its script") {
+      val hans = Some(Language("zh-Hans"))
+      assertTrue(
+        Mihon.resolve(Language("zh")) == hans,
+        Mihon.resolve(Language("zh-CN")) == hans,
+        Mihon.resolve(Language("zh-SG")) == hans,
+        Mihon.resolve(Language("zh-Hans-CN")) == hans,
+        Mihon.seeded(1L, Language("zh-CN")).language == Language("zh-Hans"),
       )
     },
     test("a language without data is refused, by resolve and by the factories, naming the languages") {
@@ -135,7 +188,11 @@ object LanguagesSpec extends ZIOSpecDefault:
       )
     },
     test("a tag that names another script is refused") {
-      assertTrue(Mihon.resolve(Language("en-Cyrl")).isEmpty, Mihon.resolve(Language("la-Grek")).isEmpty)
+      assertTrue(
+        Mihon.resolve(Language("en-Cyrl")).isEmpty,
+        Mihon.resolve(Language("ru-Latn")).isEmpty,
+        Mihon.resolve(Language("ja-Latn")).isEmpty,
+      )
     },
     test("English is the default and never refused") {
       assertTrue(Mihon.seeded(1L).language == Language.English, Mihon.secure().language == Language.English)

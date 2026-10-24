@@ -16,14 +16,50 @@ import languages  # noqa: E402
 import names  # noqa: E402
 import places  # noqa: E402
 import text  # noqa: E402
+import unihan  # noqa: E402
 from common import DATA, write_json  # noqa: E402
 
 HERE = pathlib.Path(__file__).resolve().parent
 
 
+# Tatoeba files Mandarin in both standards, and Serbian in both scripts: the sentences a language
+# counts its words in.
+SENTENCES = {
+    "zh-Hans": unihan.is_simplified,
+    "zh-Hant": unihan.is_traditional,
+    "sr-Cyrl": lambda s: any("\u0400" <= c <= "\u04ff" for c in s) and not any("a" <= c.lower() <= "z" for c in s),
+}
+
+
 def lorem_words():
     lines = (HERE / "lorem.txt").read_text(encoding="utf-8").splitlines()
     return [[w, 1] for w in lines if w and not w.startswith("#")]
+
+
+# Wikidata names some Thai cities by their municipality ("city municipality of"), and lists
+# districts and provinces among them.
+CITY_PREFIXES = {"th": ["เทศบาลนคร", "เทศบาลเมือง"]}
+NOT_CITIES = {"th": ["เขต", "จังหวัด", "อำเภอ", "แขวง"]}
+# And some Japanese metropolitan areas and regions, which the settlement filter lets through, and
+# the prefecture of Tokyo besides the city.
+NOT_CITY_ENDINGS = {"ja": ["圏", "地域", "東京都"]}
+
+
+def city_names(tag, cities):
+    out, seen = [], set()
+    for c in cities:
+        name = c["name"]
+        if any(name.startswith(p) for p in NOT_CITIES.get(tag, [])):
+            continue
+        if any(name.endswith(e) for e in NOT_CITY_ENDINGS.get(tag, [])):
+            continue
+        for p in CITY_PREFIXES.get(tag, []):
+            if name.startswith(p) and len(name) > len(p):
+                name = name[len(p):]
+        if name not in seen:
+            seen.add(name)
+            out.append(dict(c, name=name))
+    return out
 
 
 def city_ok(script):
@@ -57,7 +93,7 @@ def build(tag):
         "female": n["female"], "male": n["male"], "family": n["family"],
     })
 
-    words = lorem_words() if tag == "la" else text.words(tag, conf, all_names, conf.get("sentence_filter"))
+    words = lorem_words() if tag == "la" else text.words(tag, conf, all_names, SENTENCES.get(tag))
     cased = conf["script"] in text.CASED
     quotes = conf["quotes"] or cldr.quotes(conf["cldr"])
     write_json(out / "text.json", {
@@ -80,7 +116,8 @@ def build(tag):
     if tag == "la":
         cities = [{"name": "Civitas Vaticana", "weight": 1}]
     else:
-        cities = places.cities(country, languages.COUNTRY_QID[country], conf["wikidata"], city_ok(conf["script"]))
+        cities = city_names(tag, places.cities(country, languages.COUNTRY_QID[country], conf["wikidata"],
+                                               city_ok(conf["script"]), limit=140))[:100]
     fmt = formats.COUNTRIES[country]
     write_json(out / f"country-{country}.json", {
         "code": country, "lines": fmt["lines"], "separator": fmt["separator"],

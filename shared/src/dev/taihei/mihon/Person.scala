@@ -8,10 +8,10 @@ import dev.taihei.mihon.data.Form
  * release can add a field.
  *
  * {{{
- * val p = Mihon.seeded(1L).person
- * p.fullName // a given name, a space and a family name in English
- * p.latin    // the same in a language in Latin script
- * p.reading  // None: only Japanese has a reading
+ * val ja = Mihon.seeded(1L, Language("ja")).person
+ * ja.fullName // "三浦さくら": family name first, no space
+ * ja.reading  // Some("ミウラ サクラ")
+ * ja.latin    // "Miura Sakura"
  * }}}
  */
 final class Person private[mihon] (

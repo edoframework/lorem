@@ -34,7 +34,8 @@ The sample data under dev/taihei/mihon/data/ was derived from the sources
 below by the scripts in scripts/data/. docs/data-sources.md records the
 versions, download dates and processing of each.
 
-Unicode CLDR 47 (country names, quotation marks, likely subtags).
+Unicode CLDR 47 (country names, quotation marks, likely subtags) and the
+Unicode Han Database, Unihan 16.0.0 (Mandarin readings).
 Copyright (c) 2004-2025 Unicode, Inc. Distributed under the Unicode
 License v3; the full text is in LICENSE-UNICODE.
 

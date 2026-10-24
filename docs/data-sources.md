@@ -18,6 +18,7 @@ taken; no sentence, and no span of more than one word, from any source is reprod
 | --- | --- | --- |
 | Country names in each language, quotation marks, the default country of each language (likely subtags) | [Unicode CLDR](https://cldr.unicode.org) 47.0.0, the `cldr-localenames-full`, `cldr-misc-full` and `cldr-core` JSON packages | [Unicode License v3](https://www.unicode.org/license.txt), in `LICENSE-UNICODE` |
 | Words of each language's text (except Latin) | Word frequencies counted from the per-language sentence exports of the [Tatoeba Project](https://tatoeba.org), written by the Tatoeba contributors | [CC BY 2.0 FR](https://creativecommons.org/licenses/by/2.0/fr/), attributed in `NOTICE` |
+| Pinyin of Chinese family names | The kMandarin readings of the [Unicode Han Database](https://www.unicode.org/charts/unihan.html) (Unihan) 16.0.0, tone marks removed, with the readings family names take where they differ (`scripts/data/unihan.py`) | [Unicode License v3](https://www.unicode.org/license.txt), in `LICENSE-UNICODE` |
 | Latin text | The words of Lorem Ipsum, derived from Cicero, *De finibus bonorum et malorum* (45 BC), in `scripts/data/lorem.txt` | public domain |
 | United States given names and family names | [U.S. Census Bureau](https://www.census.gov/topics/population/genealogy/data.html): the 1990 first-name lists (`dist.female.first`, `dist.male.first`) and the 2010 surname list | U.S. Government work, 17 U.S.C. 105 |
 | Latin given and family names | Classical Roman praenomina and nomina gentilicia, written in `scripts/data/names.py` | historical facts, written for this library (Apache 2.0) |
@@ -33,6 +34,12 @@ taken; no sentence, and no span of more than one word, from any source is reprod
 - In scripts with case, a word that is capitalised wherever it stands inside a sentence is a
   proper noun and is removed (German keeps it: it capitalises nouns). The names of the language,
   and the recurring characters of Tatoeba's sentences, are removed in every script.
+- Tatoeba's Mandarin sentences are in both Simplified and Traditional characters. A sentence
+  counts for `zh-Hans` when it holds a character only Simplified writing uses and none only
+  Traditional writing uses, by Unihan's kSimplifiedVariant and kTraditionalVariant; nothing of
+  that classification ships.
+- Japanese segments contain pieces of inflections: a word that starts with a small kana, ん or ー,
+  or a single hiragana that is not a particle, is removed.
 - Chinese, Japanese and Thai, which write no space between words, are split into words with
   [ICU4J](https://github.com/unicode-org/icu) 77.1 from Maven Central (Unicode License v3), run by
   `scripts/data/segment.py` only, never by the build or the library.
@@ -49,17 +56,34 @@ the reservation is cited here; elsewhere a number may be real.
 ## Processing
 
 - **Words.** Tatoeba's sentences of a language are split into words; a word must consist of
-  letters of the language's script. The 1500 most frequent words that pass the filters are kept,
+  letters of the language's script. The 1300 most frequent words that pass the filters are kept,
   each weighted by the square root of its count, so that the commonest words do not crowd out
   the rest.
 - **Capitals.** For a script with case, the data holds the capital of each initial its words use,
   computed by the script (`str.upper`, with Turkish `i` to `İ` and Dutch `ij` to `IJ`), so that no
   platform case mapping runs at run time and the JVM and Scala.js cannot differ.
 - **Names.** The Census lists keep their top 200 given names per gender and 300 surnames,
-  weighted by frequency.
+  weighted by frequency. From Wikidata, a language keeps the 120 given names per gender and the
+  160 family names most often borne by people with the citizenship of its default country
+  (P27 with P735 or P734), weighted by that count; only the counts and the names' own labels are
+  taken, nothing about any person. A given name is on the female or the male list by the gender
+  of its bearers (both, when at least a quarter are of each). Where a country's people carry too
+  few name statements (Thailand), name items with a native label in the language (P1705), or
+  written in its script (P282), are added with a weight of one. Names longer than two characters
+  are left out in Chinese, where they are transcribed foreign names.
+- **Romanisation.** The `latin` form is computed by rule where one exists: ICAO 9303 for Russian
+  (with the national variants for Ukrainian, Bulgarian and Serbian), ELOT 743 for Greek, Hepburn
+  as Japanese passports write it (no macrons), pinyin without tone marks for Chinese (Unihan for
+  family names, the English label for given names); elsewhere it is the name item's English
+  label. Japanese given names on Wikidata are in hiragana, and so are Mihon's; their katakana
+  reading is converted from the hiragana, a family name's from its Hepburn romanisation (Satō is
+  サトウ). `ascii`, the form an e-mail address takes, folds the latin form to ASCII (é to e, ß to
+  ss, ł to l). All of it is in `scripts/data/romanize.py`.
 - **Cities.** The settlements of the country with the largest populations on Wikidata (an urban
   or metropolitan area, or a neighbourhood, quarter or district of a city, is not a city; Los
-  Angeles, which Wikidata classes only as a charter city, is added by name), named in the language, weighted by population in
+  Angeles, which Wikidata classes only as a charter city, is added by name; Thai municipality
+  prefixes are removed and Thai districts and provinces, Japanese metropolitan areas and regions
+  left out), named in the language, weighted by population in
   thousands, with their first-level region where the address format names one.
 
 ## Downloads
@@ -73,7 +97,12 @@ the reservation is cited here; elsewhere a number may be real.
 | [census/dist.male.first](https://www2.census.gov/topics/genealogy/1990surnames/dist.male.first) | 2026-10-24 | 42665 | `0a5078ef6effe3b483d15b0f7f95047662126c9bfb624ecd5e5b978fc0f2470b` |
 | [cldr-47.0.0/cldr-core/LICENSE](https://cdn.jsdelivr.net/npm/cldr-core@47.0.0/LICENSE) | 2026-10-24 | 2033 | `b4c0ae8ef04f7059f96ce5bbe0467f9fe6f6d81bbe13517701dfeb961fb4d0b6` |
 | [cldr-47.0.0/cldr-core/supplemental/likelySubtags.json](https://cdn.jsdelivr.net/npm/cldr-core@47.0.0/supplemental/likelySubtags.json) | 2026-10-24 | 218772 | `b0f791c37b7f1dedb57f6d0542b904ab0ceee7a476f5194c797f53e87511b9db` |
+| [cldr-47.0.0/cldr-localenames-full/main/ar/territories.json](https://cdn.jsdelivr.net/npm/cldr-localenames-full@47.0.0/main/ar/territories.json) | 2026-10-24 | 12282 | `fcefc7f4d7dc8f0d856d5ede1b8f71aa737e24454ef254206bc42f5ba20f6d79` |
 | [cldr-47.0.0/cldr-localenames-full/main/en/territories.json](https://cdn.jsdelivr.net/npm/cldr-localenames-full@47.0.0/main/en/territories.json) | 2026-10-24 | 9956 | `158c1d575308f7e46912edbeda435c8fe2ef5dad280798231f3a432e406b1807` |
+| [cldr-47.0.0/cldr-localenames-full/main/ja/territories.json](https://cdn.jsdelivr.net/npm/cldr-localenames-full@47.0.0/main/ja/territories.json) | 2026-10-24 | 11751 | `042093cbb41ac1c877d3d0302800a3618075c77baf0a8810116096b62ed47da8` |
+| [cldr-47.0.0/cldr-localenames-full/main/ru/territories.json](https://cdn.jsdelivr.net/npm/cldr-localenames-full@47.0.0/main/ru/territories.json) | 2026-10-24 | 12730 | `6aa453161f1662df920a01a7bbee563e3e43be6229956739247af06d8bd60421` |
+| [cldr-47.0.0/cldr-localenames-full/main/th/territories.json](https://cdn.jsdelivr.net/npm/cldr-localenames-full@47.0.0/main/th/territories.json) | 2026-10-24 | 16270 | `640db35182b55b57efe5b53446f266bb1d7ff5b06571221cb263d0fb550de8cc` |
+| [cldr-47.0.0/cldr-localenames-full/main/zh/territories.json](https://cdn.jsdelivr.net/npm/cldr-localenames-full@47.0.0/main/zh/territories.json) | 2026-10-24 | 9873 | `539c540399611f96c574ee3f19c9d6abec7b8ff71c6cb651e4e1c1cd3ed3bed8` |
 | [cldr-47.0.0/cldr-misc-full/main/ar/delimiters.json](https://cdn.jsdelivr.net/npm/cldr-misc-full@47.0.0/main/ar/delimiters.json) | 2026-10-24 | 267 | `3d602c24023aa1bd998335ebe3f497390a17093b74791ae6c797a974813d6de2` |
 | [cldr-47.0.0/cldr-misc-full/main/bg/delimiters.json](https://cdn.jsdelivr.net/npm/cldr-misc-full@47.0.0/main/bg/delimiters.json) | 2026-10-24 | 267 | `f37a1033935efbb023767f3aa2dbe0565d00241431983babbe0d54fde2839ae8` |
 | [cldr-47.0.0/cldr-misc-full/main/de/delimiters.json](https://cdn.jsdelivr.net/npm/cldr-misc-full@47.0.0/main/de/delimiters.json) | 2026-10-24 | 267 | `8885bcb7f04cc611a0904583a708396ecfc273cfaf69935441b1124f9cdc9557` |
@@ -99,38 +128,112 @@ the reservation is cited here; elsewhere a number may be real.
 | [cldr-47.0.0/cldr-misc-full/main/zh-Hant/delimiters.json](https://cdn.jsdelivr.net/npm/cldr-misc-full@47.0.0/main/zh-Hant/delimiters.json) | 2026-10-24 | 298 | `08aa133e037b7e7fc6ddb7f3607e8481ccd8b20de041c47e79eafe2dbe6540c9` |
 | [cldr-47.0.0/cldr-misc-full/main/zh/delimiters.json](https://cdn.jsdelivr.net/npm/cldr-misc-full@47.0.0/main/zh/delimiters.json) | 2026-10-24 | 267 | `70d8c955b62e4c94f36aafd9d015a0154fad3a11bf7fc4e82b241ecb8876cb16` |
 | [icu4j-77.1.jar](https://repo1.maven.org/maven2/com/ibm/icu/icu4j/77.1/icu4j-77.1.jar) | 2026-10-24 | 14663227 | `b3640b9f416a4411fd33c59abbeea8fd57d024c23e1819bf9673220a97499fe3` |
+| [ldnoobw-5faf2ba42d7b/ar](https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/5faf2ba42d7b1c0977169ec3611df25a3c08eb13/ar) | 2026-10-24 | 331 | `23dbd9c55257bf2a4965f46664dc7eac04b61ff4eb3571e41f7e964c7c3ed96b` |
 | [ldnoobw-5faf2ba42d7b/en](https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/5faf2ba42d7b1c0977169ec3611df25a3c08eb13/en) | 2026-10-24 | 3777 | `af851ecef1d5f212caba17339b12ac39cc2fef7d78c74876f67237644fcee8bd` |
 | [ldnoobw-5faf2ba42d7b/ja](https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/5faf2ba42d7b1c0977169ec3611df25a3c08eb13/ja) | 2026-10-24 | 2339 | `f83c4d0843ea6474c17bf171edd72b616b3af403f8613f2cde1bd841faf6f316` |
+| [ldnoobw-5faf2ba42d7b/ru](https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/5faf2ba42d7b1c0977169ec3611df25a3c08eb13/ru) | 2026-10-24 | 2223 | `2598adabd2b761733d72a68d8ee4fcc1d2c38f2f85b6ff489985c6ce1d93bf75` |
 | [ldnoobw-5faf2ba42d7b/th](https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/5faf2ba42d7b1c0977169ec3611df25a3c08eb13/th) | 2026-10-24 | 493 | `835036d87a3a67738e388cd6de92e3c995c186a1427b4e830fe7b85483c257e7` |
+| [ldnoobw-5faf2ba42d7b/zh](https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/5faf2ba42d7b1c0977169ec3611df25a3c08eb13/zh) | 2026-10-24 | 2675 | `a1d9aa037c8b039ef3b40148b3364ce2ca62ce4a955b7082a16ad99f6cbd1bc0` |
+| [tatoeba/ara_sentences.tsv.bz2](https://downloads.tatoeba.org/exports/per_language/ara/ara_sentences.tsv.bz2) | 2026-10-24 | 769162 | `c8d9c09f2db910ee1fb05054f0badb7a38195ea952b39f9e4ce5b92ec8ec70bc` |
+| [tatoeba/cmn_sentences.tsv.bz2](https://downloads.tatoeba.org/exports/per_language/cmn/cmn_sentences.tsv.bz2) | 2026-10-24 | 1259217 | `edf090f0e0a043792e379560ddb56816757baa3dc99541fdca999c83b98a47ee` |
 | [tatoeba/eng_sentences.tsv.bz2](https://downloads.tatoeba.org/exports/per_language/eng/eng_sentences.tsv.bz2) | 2026-10-24 | 24918676 | `f634eaaf26623c2a2e170be2dae54b18388479311ae8619d04889df4e5d021f3` |
 | [tatoeba/jpn_sentences.tsv.bz2](https://downloads.tatoeba.org/exports/per_language/jpn/jpn_sentences.tsv.bz2) | 2026-10-24 | 3417887 | `25d727283d297f812b2c9ec36f3a6812a8a60ed9d6d5427978c4e020a83782c3` |
+| [tatoeba/rus_sentences.tsv.bz2](https://downloads.tatoeba.org/exports/per_language/rus/rus_sentences.tsv.bz2) | 2026-10-24 | 15570556 | `4cc471dbea673819ffada4735a9eadb4cd360074f9feee2fd6481bc5c7081760` |
 | [tatoeba/tha_sentences.tsv.bz2](https://downloads.tatoeba.org/exports/per_language/tha/tha_sentences.tsv.bz2) | 2026-10-24 | 72082 | `d03a70b0189cf410e3b6ce4d6e0daa4062a01518d71ed1efd2fbed619669e5a4` |
 | [unihan-16.0.0/Unihan.zip](https://www.unicode.org/Public/16.0.0/ucd/Unihan.zip) | 2026-10-24 | 8382485 | `b8f000df69de7828d21326a2ffea462b04bc7560022989f7cc704f10521ef3e0` |
+| wikidata/cities-CN-100000-7f8d78abb95d.json (Wikidata Query Service) | 2026-10-24 | 105174 | `151896c770842a051f3aeb977db714e59bb56649c7b2f4c342b3b915cac4673f` |
+| wikidata/cities-EG-100000-bacafd9f9b54.json (Wikidata Query Service) | 2026-10-24 | 18714 | `4c3dc0c4f7ea2f923c3b0f161b7dce1cb42a40594afdce4b2d1fda02496d7874` |
+| wikidata/cities-EG-20000-0606da3cd7c7.json (Wikidata Query Service) | 2026-10-24 | 41765 | `c1b35d842f868af368c5b640308a4af93c0987b15ca6abc34af9717e00cb23d9` |
+| wikidata/cities-EG-5000-442c5ed17675.json (Wikidata Query Service) | 2026-10-24 | 58007 | `a4d78017f0e29d7c611503280f0d5d8d09d3cd28d6c17e1fc4889b6e36728989` |
+| wikidata/cities-JP-100000-8b95b80c3dad.json (Wikidata Query Service) | 2026-10-24 | 74022 | `59be0a7e252ca05bba2650fa63446fab00cfb588cb5e97f6d31d030b1cd2c149` |
+| wikidata/cities-RU-100000-de9f6ebddd09.json (Wikidata Query Service) | 2026-10-24 | 47630 | `d4d8209c486db11b1f2e0328234c93cf4877b05979698239e57c9a7b316503f4` |
+| wikidata/cities-RU-20000-e32f03889713.json (Wikidata Query Service) | 2026-10-24 | 104609 | `b6243c87bece29384eecd794366b69c3aeca60f5bd678ea116bc0a1e40cc7824` |
+| wikidata/cities-TH-100000-949324704591.json (Wikidata Query Service) | 2026-10-24 | 11119 | `d72997ab11a3d96c42dae9b63adeeca39d31bdb92c69f9b0497f73216329dde8` |
+| wikidata/cities-TH-20000-c9b1a7cf2094.json (Wikidata Query Service) | 2026-10-24 | 52555 | `bdf44178a81cf437e0341bd8a1c17006253b59de5704afd0a4fdc5e567dc5203` |
+| wikidata/cities-TH-5000-2acb4259fcc5.json (Wikidata Query Service) | 2026-10-24 | 79867 | `b535d56b6ede49abedcfb0207a520a52022dd4bd776b1d8d1873b1d3e070bddc` |
 | wikidata/cities-US-100000-5dc2183a6c63.json (Wikidata Query Service) | 2026-10-24 | 92466 | `8f1b00feb15e705b8e4d902889993213c1fcb3a072b20ce339db47b6f8ed3c91` |
 | wikidata/cities-extra-US-4cf89280a2e7.json (Wikidata Query Service) | 2026-10-24 | 351 | `c3d86b9969fc7d4f754a484d1e56e975deea5b5d4d5a1b5529dca34bdaf7e7f0` |
+| wikidata/city-labels-CN-zh-hans-553ed5985d1e.json (Wikidata Query Service) | 2026-10-24 | 93577 | `675ba85b3ddd01b2d95b9fcea76058076d98d27b81ad7d1f3ec5cafbe0a7f700` |
+| wikidata/city-labels-EG-ar-1b0e05d24f40.json (Wikidata Query Service) | 2026-10-24 | 37265 | `cdd63e467ea6ee72697f4779fc31f9935c04665d15bc650ed4edefff6ee75032` |
+| wikidata/city-labels-EG-ar-2930630c62c8.json (Wikidata Query Service) | 2026-10-24 | 52079 | `097b43e68e5474d94f44cff7d9a36bbedb589e9bb712990daf3e2afaf10f47b3` |
+| wikidata/city-labels-JP-ja-6a2252f6c211.json (Wikidata Query Service) | 2026-10-24 | 65074 | `ad9cf10bbf6dc27e1892be7abddfeca83a1b21fe1e3c6eab4117a39977e82783` |
+| wikidata/city-labels-RU-ru-4197e32babab.json (Wikidata Query Service) | 2026-10-24 | 98227 | `b34f751fafed758c48659cec2ba6bf3ea6469123cb606321b6caa15027fc15aa` |
+| wikidata/city-labels-RU-ru-dab211ae6cc5.json (Wikidata Query Service) | 2026-10-24 | 43610 | `af1513611c70261ce09429c17b5fd42acda38be521ae3e5605bceac550644fcd` |
+| wikidata/city-labels-TH-th-25490ef40a0d.json (Wikidata Query Service) | 2026-10-24 | 82703 | `4eb06305b0ef2ca642cfe5a94330da01647fb0697c7df9773aa9e97ec61bbd9c` |
+| wikidata/city-labels-TH-th-4cae14377bc5.json (Wikidata Query Service) | 2026-10-24 | 53980 | `2f2725d4235c6382ea12f43b43f3412e1f8e73b2fc9dde3407dc357736819a1f` |
 | wikidata/city-labels-US-en-612bee56effd.json (Wikidata Query Service) | 2026-10-24 | 119226 | `93d484df82180cf0dd916ca68d99e747f7f0ca23b8d9f165c93e53fbdf506a4c` |
 | wikidata/city-labels-US-en-a9eb31ac0a9d.json (Wikidata Query Service) | 2026-10-24 | 119567 | `8af2d0d374a753988ae8e6c18aeb7d00c4a42a2cf6cb02e4078a9f9255ccff57` |
 | wikidata/countries-la-c7530040f26b.json (Wikidata Query Service) | 2026-10-24 | 49396 | `7713e175339f68f3b240a8bc7b6a57884afaec221f5eb054cf3447fc79a9b32e` |
 | wikidata/family-CN-d5284ee6a1f6.json (Wikidata Query Service) | 2026-10-24 | 205743 | `678bff1a0381a7d4ff53d6f6feca7cd44513630ee303617dabb710736b267dca` |
 | wikidata/family-EG-ff4b60381854.json (Wikidata Query Service) | 2026-10-24 | 205807 | `27afedca4b9c59241433eb3cf46c620c009785ea409870c3187627b49156ab0f` |
+| wikidata/family-JP-4a9c58ab192e.json (Wikidata Query Service) | 2026-10-24 | 206722 | `dd7dd894334b9978458a9a06a2543a6d0cbac86bf032f108183c68c414fca40d` |
+| wikidata/family-Q101352-native-th-63dceffdd433.json (Wikidata Query Service) | 2026-10-24 | 27797 | `aa1d1521ce7673597177b44c26ba6705c89fc75faf503d1af5864d405907f6df` |
+| wikidata/family-RU-78067d505050.json (Wikidata Query Service) | 2026-10-24 | 206276 | `7449874f7e883e264d57fa5e1a239b0e2fb9ecccb29d1a80209e90bd298c00a4` |
 | wikidata/family-TH-a9ece3b41392.json (Wikidata Query Service) | 2026-10-24 | 206167 | `a21202e8b6f999d6b6c3e243ba9c9efe07f3408e9f594677cd2c9741140a1c65` |
 | wikidata/family-labels-CN-zh-hans-0-5cb607f97daf.json (Wikidata Query Service) | 2026-10-24 | 116858 | `253a8c24455453c268772a0d25e2c37ffd012a4781d42c3774a7712170f6f48b` |
+| wikidata/family-labels-CN-zh-hans-0-b35ab4c2bbd6.json (Wikidata Query Service) | 2026-10-24 | 124938 | `2cdb99f35cc4e37f4e907b129ce171627ad3140b1ca2e95a2adc352ca24edc30` |
 | wikidata/family-labels-CN-zh-hans-400-01594beb6b32.json (Wikidata Query Service) | 2026-10-24 | 113949 | `a2214a9e3c36f608209fb08d774b4626ab1a4cd88bd4fa17814df69234004370` |
+| wikidata/family-labels-CN-zh-hans-400-1bac068a9410.json (Wikidata Query Service) | 2026-10-24 | 121242 | `c8c1d96f02fd3d6a7695e47eb52dab1e1dda18f9a7736f67d3d70e1658c5354c` |
 | wikidata/family-labels-EG-ar-0-9ca1e73ee660.json (Wikidata Query Service) | 2026-10-24 | 118887 | `c83b760b775976ed42e72f205003dfd5595a1757ccbcfb1e6fd262f2e7e5d2be` |
+| wikidata/family-labels-EG-ar-0-fc360fbce5ff.json (Wikidata Query Service) | 2026-10-24 | 129493 | `6c856f2caba933d764da55b7e1c4a5cdf69121c39cac06269ce859f3ed126ce3` |
 | wikidata/family-labels-EG-ar-400-01938e1c7618.json (Wikidata Query Service) | 2026-10-24 | 114442 | `63617db08db9111c12b8836f282295913ac1bc9d7795b875bdfcd3d64e4dcc30` |
+| wikidata/family-labels-EG-ar-400-d2c338834749.json (Wikidata Query Service) | 2026-10-24 | 125572 | `ec379731f28cb5ec0f8692b0a6dcaaf58557bdf91cbcc15998d18cc77baa237d` |
+| wikidata/family-labels-JP-ja-0-14293389f0e8.json (Wikidata Query Service) | 2026-10-24 | 150505 | `771fc93d6c9170586769f2f0d278084c250c86067a0b8011722675dbca5cd470` |
+| wikidata/family-labels-JP-ja-0-1ff1ec3792a5.json (Wikidata Query Service) | 2026-10-24 | 176797 | `febe3446dd494dc03555664de5febaf0af726b7674e9b792c70a515b4c42959a` |
+| wikidata/family-labels-JP-ja-400-0e8bd3b24090.json (Wikidata Query Service) | 2026-10-24 | 155793 | `3a931656b7d5a6d2c3a038e0e9137508f514772c3a40ee2fd5da0d22e4e72db9` |
+| wikidata/family-labels-JP-ja-400-21fa55cd7fbb.json (Wikidata Query Service) | 2026-10-24 | 187156 | `9c83976a113721f8c57a4983d9baff2e75799039bfb990ce5352068ecd9a7e87` |
+| wikidata/family-labels-RU-ru-0-fbcb00fb0a4a.json (Wikidata Query Service) | 2026-10-24 | 157042 | `476c94437d5260812c35ec14fbaabdad157888d29647011ac29b1a9c702a9390` |
+| wikidata/family-labels-RU-ru-0-fdf405f11e39.json (Wikidata Query Service) | 2026-10-24 | 134454 | `b9e807a01c47b1ac7203a9fc2417f80007ae4228e199bb5ac2a0f8ff1bb2f237` |
+| wikidata/family-labels-RU-ru-400-2f052e63ff3a.json (Wikidata Query Service) | 2026-10-24 | 156640 | `b16e64cd32c93dd38e6726207623fee4f074525ad6756a15d530a2fa2614d99b` |
+| wikidata/family-labels-RU-ru-400-c75fd28957e9.json (Wikidata Query Service) | 2026-10-24 | 132432 | `90bf068f68af0060450b4970103d40f712b812d39aad6e9301e6c87851bcb4ca` |
 | wikidata/family-labels-TH-th-0-5208b43624c8.json (Wikidata Query Service) | 2026-10-24 | 92972 | `94aeb01f65a1eaf818360ca01e65984c909416276613c6bc5e2c7c5a12f61dd9` |
+| wikidata/family-labels-TH-th-0-8e72784647cf.json (Wikidata Query Service) | 2026-10-24 | 119590 | `3ba9c9476f710507b448b4778b30ace9aa26947b8e03cd37134ea75b9f7fb498` |
+| wikidata/family-labels-TH-th-0-fb3a10ed6367.json (Wikidata Query Service) | 2026-10-24 | 92975 | `485618eac50f6d0ea65abdf261b2a2b61f1365ada564a16cdd7492cbd8bf6d59` |
 | wikidata/family-labels-TH-th-400-1d21cab9c711.json (Wikidata Query Service) | 2026-10-24 | 92527 | `9bf632d231d891779baf9d345d73e8bf0935b1416b817d8fcf10e3c7a129ce85` |
+| wikidata/family-labels-TH-th-400-49bda85f9671.json (Wikidata Query Service) | 2026-10-24 | 92311 | `9937c8369eb02f71853207a00e9a261fff4676bdcb58cace57fbc09dbe7a816c` |
+| wikidata/family-labels-TH-th-400-5fa67759d782.json (Wikidata Query Service) | 2026-10-24 | 95791 | `582805b38daec940f0e8d997553077c3a43966711d244534570f1d8497e8fc7a` |
+| wikidata/family-labels-TH-th-800-c0aaa8c7d96a.json (Wikidata Query Service) | 2026-10-24 | 6003 | `70ab43706b64f74281fdc99e0bb4e7b6f660ec7476bb190be819d42fb7d7e256` |
+| wikidata/family-labels-TH-th-800-d4daf1cf203d.json (Wikidata Query Service) | 2026-10-24 | 6259 | `5758a9c0cfb222dbf946c872b32a7c2cef455bd9f2e7468ed637c8d08e2076e0` |
 | wikidata/given-CN-39a41b65f54e.json (Wikidata Query Service) | 2026-10-24 | 546436 | `8f2732454d6a42d906135b560fd03e347de1ae4162c8b046549790e491262a3d` |
 | wikidata/given-EG-1711a0e3bb2f.json (Wikidata Query Service) | 2026-10-24 | 501971 | `39bb1d238818faf71be3a298fd11e2303057d4163b930da701ab288502c3b06c` |
+| wikidata/given-JP-a7bdef80c751.json (Wikidata Query Service) | 2026-10-24 | 547569 | `b2ac791649b4b9dc716e8c13f3b544704af9e40029622360e64b941143d73c6a` |
+| wikidata/given-RU-c511b7d00e5e.json (Wikidata Query Service) | 2026-10-24 | 546072 | `a2a31b1fd6d6c3c56c52893c7ef569b2dab7a33c2506d50b599ce23e93fa7b62` |
 | wikidata/given-TH-64de92dd5042.json (Wikidata Query Service) | 2026-10-24 | 435687 | `3a1666669bb1cffde2c22693e1e899251a8fbb1087a408c0ee5e887619b95f28` |
 | wikidata/given-labels-CN-zh-hans-0-a5354b6d5ab0.json (Wikidata Query Service) | 2026-10-24 | 109687 | `17c466fedb64ec92c4536573b3d748ecd729f83612046eba3e5b2719ac953ae2` |
+| wikidata/given-labels-CN-zh-hans-0-faa2b77de8dd.json (Wikidata Query Service) | 2026-10-24 | 124262 | `afbf06b143c08f3a3c477a699eacdce8df00aca22411330085be4e4ade5477bf` |
 | wikidata/given-labels-CN-zh-hans-1200-4947ab17b9a7.json (Wikidata Query Service) | 2026-10-24 | 47156 | `cd37e09fd23ca8cd453247f21bf7550e51c51eff9fbefb2ff70eccf385d25561` |
+| wikidata/given-labels-CN-zh-hans-1200-4bd49a77675e.json (Wikidata Query Service) | 2026-10-24 | 53257 | `c474a275b759d36bd0776144b12ab77b1b20b96734beddc6b099e35685fbf252` |
 | wikidata/given-labels-CN-zh-hans-400-16dc70359d63.json (Wikidata Query Service) | 2026-10-24 | 111521 | `38f4bfe29aba02a3701258193196f43c8fab5640394d4ba03dfa1c4614358074` |
+| wikidata/given-labels-CN-zh-hans-400-3204f58af023.json (Wikidata Query Service) | 2026-10-24 | 120553 | `94d12badd4fba7c94b4f5001b66bcfd6b8032ecd9d121967551fe54c4bfde3dc` |
+| wikidata/given-labels-CN-zh-hans-800-2fae2648d7c4.json (Wikidata Query Service) | 2026-10-24 | 109512 | `34563890f5304cee8b3bd7698a65a3cdb34b1f7e347e32597c1adb4ef8e8c3e7` |
 | wikidata/given-labels-CN-zh-hans-800-79c23c0d6dc0.json (Wikidata Query Service) | 2026-10-24 | 104396 | `3d5498b1941575a5226f72ce27de0402d8a60e8c1991b8b612e646e7761b7681` |
 | wikidata/given-labels-EG-ar-0-1b0565d9678e.json (Wikidata Query Service) | 2026-10-24 | 121528 | `171e726a2aa552f0b0f320e5ee891d070895aa624fd82489563287487a956a44` |
+| wikidata/given-labels-EG-ar-0-fffea04bbee6.json (Wikidata Query Service) | 2026-10-24 | 137950 | `2cbe9019cbcbbbb6b771e6840a938ee5669fd4b63884403c71c9a927273bb0ad` |
+| wikidata/given-labels-EG-ar-1200-8b18da4c6d48.json (Wikidata Query Service) | 2026-10-24 | 50212 | `5e69b8cffcc359d3d0bf18c16a6e1aa3f7d84922368ab4609098a35cde0e2ad9` |
 | wikidata/given-labels-EG-ar-1200-f96c457b038e.json (Wikidata Query Service) | 2026-10-24 | 46071 | `49a8c5819089159de68d4c4b14ab95fcbf15396e4c62197746a058ac2ee920f2` |
 | wikidata/given-labels-EG-ar-400-a6b98aa14128.json (Wikidata Query Service) | 2026-10-24 | 126299 | `3fd9334d354bfdef46a68236e91d34c883e43cf90bed80a16beb0bfe1b7e47df` |
+| wikidata/given-labels-EG-ar-400-ebb4fb702188.json (Wikidata Query Service) | 2026-10-24 | 133840 | `337a8bd92fc241e9de74a907d79210f737d99a114e293a213d4840b65e55235d` |
+| wikidata/given-labels-EG-ar-800-49e97bb0f504.json (Wikidata Query Service) | 2026-10-24 | 149134 | `cfce8620f528b56f8cef42058e326f52d26213b12c2677bd7e48674b23f5424d` |
 | wikidata/given-labels-EG-ar-800-7c55a9a8f23f.json (Wikidata Query Service) | 2026-10-24 | 123810 | `d52c4bb14981f21ff23616b84620b44f91e29ee10cadb35ed2db7b8841328964` |
+| wikidata/given-labels-JP-ja-0-0a6994752d3f.json (Wikidata Query Service) | 2026-10-24 | 149267 | `a02ffbda2b962f405a4a1ddac2e91c57a41fe683c173a24a8229abe8078659ed` |
+| wikidata/given-labels-JP-ja-0-1abb87b02073.json (Wikidata Query Service) | 2026-10-24 | 190591 | `071a01b2055337dbad23b8db30948f2945191ad9246030a6cb5197fbff890c2c` |
+| wikidata/given-labels-JP-ja-1200-1f5339e72f4d.json (Wikidata Query Service) | 2026-10-24 | 117106 | `4f525518984867cbed22b2dd78e244713fbe25bb1ef756f848f56759fc4a0ae0` |
+| wikidata/given-labels-JP-ja-1200-6a0e43a1a746.json (Wikidata Query Service) | 2026-10-24 | 90049 | `ea1b349444f0a68328f72735448e509c0a3324904b8280f2e955b62cf830b773` |
+| wikidata/given-labels-JP-ja-400-33c9a25da5fc.json (Wikidata Query Service) | 2026-10-24 | 184017 | `d1d1465863bae1ebae690ebb2e0ac69b991745c30c2bd22cefba467d26afabc7` |
+| wikidata/given-labels-JP-ja-400-7be756b57506.json (Wikidata Query Service) | 2026-10-24 | 143675 | `78c4a176c053b8c87e2800680fa3ef424ba2dae58df22123758982f98a3523cf` |
+| wikidata/given-labels-JP-ja-800-0a8507b59551.json (Wikidata Query Service) | 2026-10-24 | 181703 | `b5203748d4194122f2449f33b1133a7f0d76274af9e688a7679293562e20f78f` |
+| wikidata/given-labels-JP-ja-800-5a875be831a0.json (Wikidata Query Service) | 2026-10-24 | 138587 | `a6b42f11a0a08abb8941fb12e9ba817e7f02919af351078400e679bbe31cd837` |
+| wikidata/given-labels-RU-ru-0-74f5de2dcbe3.json (Wikidata Query Service) | 2026-10-24 | 130125 | `c5d650cfb34cec93f7bee7103810408e62f5f6c40b99fe7235d684b6ffefa20c` |
+| wikidata/given-labels-RU-ru-0-bbd08d2defd3.json (Wikidata Query Service) | 2026-10-24 | 125341 | `49e568124e0dd7ac7c75cd4c0561c82f050e7f84be11a4120ddfa1f08dc906ac` |
+| wikidata/given-labels-RU-ru-1200-2cb47a6d1e7c.json (Wikidata Query Service) | 2026-10-24 | 91530 | `46080700a5dfddb33ecef0889267e84557f98cd892753821e5667360c0626a96` |
+| wikidata/given-labels-RU-ru-1200-4ab7c266f250.json (Wikidata Query Service) | 2026-10-24 | 96552 | `2d50ae2aaf7ad4c04ee1a1c0327e090e620b06faa4d7af48eff522331e3a1c8a` |
+| wikidata/given-labels-RU-ru-400-4ef0c5413ef1.json (Wikidata Query Service) | 2026-10-24 | 131761 | `2030fe2dcb305a82b42b67d06aff003ffd31a7be51c81b36fc5d05f1d8216d40` |
+| wikidata/given-labels-RU-ru-400-e83fcc443260.json (Wikidata Query Service) | 2026-10-24 | 130003 | `e8f2767e393d0318dc64ea4c5c0ad4c20f781843ce9a0e8eea37f67436b06ff5` |
+| wikidata/given-labels-RU-ru-800-dccc76508463.json (Wikidata Query Service) | 2026-10-24 | 137027 | `4a3522386144b9ee0b561af1cc97f38d61efe730592fe3a51963f4b124fdcc0b` |
+| wikidata/given-labels-RU-ru-800-eba0a102a36f.json (Wikidata Query Service) | 2026-10-24 | 130967 | `78b7e8f8492dc96cb7f9ae765704803189a1ef0d22e562aa224b2b1632b871f6` |
 | wikidata/given-labels-TH-th-0-c9b891430754.json (Wikidata Query Service) | 2026-10-24 | 92421 | `f20da4cf40f5a2eb0959f5580cb5bf23db3c8354d7568145f0289897ad8da362` |
+| wikidata/given-labels-TH-th-0-e850d9c4650c.json (Wikidata Query Service) | 2026-10-24 | 116436 | `cb6dc31f44568b900d7a90164c67907d5fa16f0e484787ddfab83f25e233ccb0` |
 | wikidata/given-labels-TH-th-400-cd35b625fdb2.json (Wikidata Query Service) | 2026-10-24 | 91417 | `1c623e552f004f0a675eaf4912f3f78be4f9c6201ce62cfebd6ea497b454903b` |
+| wikidata/given-labels-TH-th-400-e3316e82db16.json (Wikidata Query Service) | 2026-10-24 | 95647 | `e0a54051c12f374f964d355fc09cae6b630f6c653a3474fda0f4a2821d53cb4f` |
+| wikidata/given-labels-TH-th-800-cf7fe2ca53c3.json (Wikidata Query Service) | 2026-10-24 | 92526 | `eaf0fedcb8ec8f6597e02ee6780b046da8d55f5ddf5a89b5f1e96b85e06455d5` |
 | wikidata/given-labels-TH-th-800-eaf54ad692a0.json (Wikidata Query Service) | 2026-10-24 | 90662 | `acd2ac43498845f7c9f5896cca8530085e2274b41c9e894727f5366a148eb6a6` |

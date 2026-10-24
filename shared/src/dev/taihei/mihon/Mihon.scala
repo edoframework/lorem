@@ -35,9 +35,11 @@ import dev.taihei.tsuji.Language
  * en.name     // a name such as "Linda Robinson"
  * en.email    // "linda.robinson@brightwavehub.example"
  *
- * val la = en.withLanguage(Language("la"))
- * la.sentence // Lorem Ipsum
- * la.person.fullName // a Roman name such as "Gaius Iulius"
+ * val ja = en.withLanguage(Language("ja"))
+ * ja.sentence // Japanese text, without spaces, ending in 。, ？ or ！
+ * ja.person.fullName // family name first, without a space: "三浦さくら"
+ *
+ * Mihon.seeded(1L, Language("la")).sentence // Lorem Ipsum
  * }}}
  */
 final class Mihon private (
@@ -47,7 +49,7 @@ final class Mihon private (
 
   /**
    * The language whose data this generator uses: the one it was asked for, or the language that
-   * serves it (`en` for `en-GB`), see [[Mihon.resolve]].
+   * serves it (`en` for `en-GB`, `zh-Hans` for `zh-CN`), see [[Mihon.resolve]].
    */
   def language: Language = data.language
 
@@ -435,9 +437,9 @@ object Mihon:
 
   /**
    * The language a factory would use for `language`, or `None` when Mihon has none for it. The tag
-   * is looked up as it is, then as an alias the data defines, then with subtags stripped from the
-   * right (`en-GB` is `en`, `la-VA` is `la`). A tag that names another script than the one found
-   * is refused (`en-Cyrl`). Code with input from outside asks first:
+   * is looked up as it is, then as an alias (`zh`, `zh-CN` and `zh-SG` are `zh-Hans`), then with
+   * subtags stripped from the right (`en-GB` is `en`, `ja-JP` is `ja`). A tag that names another
+   * script than the one found is refused (`ru-Latn`). Code with input from outside asks first:
    *
    * {{{
    * val mihon = Mihon.secure(Mihon.resolve(requested).getOrElse(Language.English))

@@ -124,7 +124,7 @@ def _dump(value, indent):
         return "{\n" + ",\n".join(items) + "\n}"
     if isinstance(value, list) and indent <= 1 and value and isinstance(value[0], (list, dict)):
         pad = "  " * (indent + 1)
-        inner = ",\n".join(pad + json.dumps(v, ensure_ascii=False, separators=(", ", ": ")) for v in value)
+        inner = ",\n".join(pad + json.dumps(v, ensure_ascii=False, separators=(",", ":")) for v in value)
         return "[\n" + inner + "\n" + "  " * indent + "]"
     return json.dumps(value, ensure_ascii=False, separators=(", ", ": "))
 
