@@ -138,7 +138,6 @@ deps_pom "$W/p2.pom" "$(dep dev.taihei taihei-tsuji_3 5.0.1-SNAPSHOT)"
 expect "pins: a SNAPSHOT pin is refused" 1 "not a released version" R pins "$W/p2.pom"
 deps_pom "$W/p3.pom" "$(dep dev.taihei taihei-tsuji_3 '${tsuji.version}')"
 expect "pins: a property for a version is refused" 1 "not a released version" R pins "$W/p3.pom"
-deps_pom "$W/p4.pom" "$(dep dev.zio zio_3 2.1.27)"
 own_pom() {
   printf '<project xmlns="http://maven.apache.org/POM/4.0.0"><groupId>dev.taihei</groupId><artifactId>taihei-x-tools_3</artifactId><version>%s</version><dependencies>%s</dependencies></project>\n' "$2" "$3" > "$1"
 }
@@ -147,6 +146,7 @@ own_pom "$W/p5.pom" 5.0.1-SNAPSHOT "$(dep dev.taihei taihei-x_3 5.0.1-SNAPSHOT)$
 own_pom "$W/p6.pom" 5.0.1 "$(dep dev.taihei taihei-x_3 5.0.0)"
 expect "pins: a module of this library at another version is refused" 1 "not this release's own version" R pins --own "taihei-x_3 taihei-x-tools_3" "$W/p6.pom"
 expect "pins: without --own, a module of this library is a pin like any other" 1 "not a released version" R pins "$W/p5.pom"
+deps_pom "$W/p4.pom" "$(dep dev.zio zio_3 2.1.27)"
 [ -z "$(R pins "$W/p4.pom")" ] && pass "pins: a POM without dev.taihei dependencies lists none" || fail "pins: listed a foreign dependency"
 
 # --- the Makefile targets against the fake registry ----------------------------------------
