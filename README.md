@@ -142,11 +142,11 @@ The same seed in several scripts:
 
 ```scala
 Mihon.seeded(1L, Language("ja")).person      // 三浦さくら, latin "Miura Sakura", reading ミウラ サクラ
-Mihon.seeded(1L, Language("ru")).person      // Ирина Игнатьева, latin "Irina Ignateva"
-Mihon.seeded(1L, Language("ar")).person      // ملك مصطفى, latin "Malak Mostafa"
-Mihon.seeded(1L, Language("zh-Hans")).person // 姜青, latin "Jiang Qing"
-Mihon.seeded(1L, Language("ru")).sentence    // "Подарок смогу вода что думаю которую слышу идите разве их."
-Mihon.seeded(1L, Language("ja")).address.lines // List(日本, 〒545-0777, 春日井市本町1-19-11)
+Mihon.seeded(1L, Language("ru")).person      // Ольга Емельянова, latin "Olga Emelianova"
+Mihon.seeded(1L, Language("ar")).person      // أمينة الداود
+Mihon.seeded(1L, Language("zh-Hans")).person // 姜慧, latin "Jiang Hui"
+Mihon.seeded(1L, Language("ru")).sentence    // "Время перед а знаю быстрее человека права неделю почти перевести."
+Mihon.seeded(1L, Language("ja")).address.lines // List(日本, 〒873-4446, 京都市中央29-20-14)
 ```
 
 The words of a language's text are drawn by how often they are used, so the text has the

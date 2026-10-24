@@ -93,7 +93,7 @@ def sparql(key, query):
     if not path.exists():
         path.parent.mkdir(parents=True, exist_ok=True)
         last = None
-        for attempt in range(4):
+        for attempt in range(6):
             try:
                 req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept": "application/sparql-results+json"})
                 with urllib.request.urlopen(req, timeout=120) as resp:
@@ -103,7 +103,7 @@ def sparql(key, query):
                 break
             except Exception as e:  # a time-out or a throttled request: wait and try again
                 last = e
-                time.sleep(10 * (attempt + 1))
+                time.sleep(20 * (attempt + 1))
         else:
             raise SystemExit(f"wikidata {key}: {last}")
     _record(f"wikidata/{key}.json", "https://query.wikidata.org/sparql (query in scripts/data)", path)

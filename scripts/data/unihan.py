@@ -71,6 +71,10 @@ def pinyin(chars):
         if c not in readings:
             return None
         r = readings[c].split()[0]
-        parts.append("".join(ch for ch in unicodedata.normalize("NFD", r) if not unicodedata.combining(ch)).replace("ü", "u"))
+        # The tone marks go; the diaeresis of ü stays, for the rule below.
+        tones = {"\u0300", "\u0301", "\u0304", "\u030c"}
+        plain = unicodedata.normalize("NFC", "".join(ch for ch in unicodedata.normalize("NFD", r) if ch not in tones))
+        # ü is yu after l and n, as Chinese passports write it (吕 is Lyu); u elsewhere.
+        parts.append(plain.replace("lü", "lyu").replace("nü", "nyu").replace("ü", "u"))
     s = "".join(parts)
     return s[:1].upper() + s[1:]

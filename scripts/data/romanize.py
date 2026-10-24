@@ -74,8 +74,10 @@ def ascii_fold(text):
 
 
 def passport_hepburn(text):
-    """Hepburn as Japanese passports write it: no macrons (ō to o, ū to u)."""
-    return ascii_fold(text.replace("ō", "o").replace("Ō", "O").replace("ū", "u").replace("Ū", "U"))
+    """Hepburn as Japanese passports write it: no macrons (ō to o, ū to u), no apostrophe
+    (Shin'ichi is Shinichi)."""
+    plain = text.replace("ō", "o").replace("Ō", "O").replace("ū", "u").replace("Ū", "U")
+    return ascii_fold(plain.replace("'", "").replace("’", ""))
 
 
 def hiragana_to_katakana(text):

@@ -35,7 +35,7 @@ def cities(country, qid, lang, ok, limit=100):
     rows = []
     for threshold in (100000, 20000, 5000):
         rows = _largest(country, qid, threshold)
-        if len(rows) >= limit * 1.5:
+        if len(rows) >= limit * 1.2:
             break
     pops = {r["item"]: int(float(r["pop"])) for r in rows}
     if country in EXTRA:

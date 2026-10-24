@@ -35,11 +35,14 @@ CAST_NATIVE = {
     "zh-Hans": {"汤姆", "玛丽", "约翰", "杰克", "迈克", "肯", "鲍勃", "爱丽丝", "露西"},
     "zh-Hant": {"湯姆", "瑪麗", "約翰", "傑克", "邁克", "肯", "鮑勃", "愛麗絲", "露西"},
     "ko": {"톰", "톰은", "톰이", "톰을", "톰의", "톰에게", "메리", "메리는", "메리가", "존", "잭"},
-    "th": {"ทอม", "แมรี่", "จอห์น", "แจ็ค", "ไมค์"},
+    "th": {"ทอม", "แมรี่", "แมรี", "จอห์น", "แจ็ค", "ไมค์"},
     "ar": {"توم", "ماري", "جون", "جاك", "سامي", "ليلى", "فاضل", "زيري", "ريما", "ياني", "يني", "ريمة", "مناد", "بايا", "سكورا", "دانيا"},
     "he": {"טום", "מרי", "ג'ון", "ג׳ון", "ג'ק", "סמי", "לילה"},
     "hi": {"टॉम", "मैरी", "जॉन", "जैक", "सामी", "लैला"},
 }
+
+# Words that reflect what some of Tatoeba's sentences argue about rather than the language.
+TOPICAL = {"ar": {"الإنفصاليون", "الانفصاليون", "الإنفصاليين", "الانفصاليين"}}
 
 # Japanese segments split inflections into pieces of a kana or two; a word that starts with a
 # small kana, ん or ー is such a piece, and a single hiragana is one unless it is a particle.
@@ -143,7 +146,7 @@ def words(tag, conf, names, script_filter=None, limit=1300):
     script = conf["script"]
     cased = script in CASED
     bad = badwords(tag)
-    excluded = set(names) | CAST | CAST_NATIVE.get(tag, set())
+    excluded = set(names) | CAST | CAST_NATIVE.get(tag, set()) | TOPICAL.get(tag, set())
     total = collections.Counter()
     non_initial = collections.Counter()
     non_initial_lower = collections.Counter()

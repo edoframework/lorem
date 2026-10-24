@@ -44,17 +44,22 @@ def _labels(kind, country, lang, ids):
     for start in range(0, len(ids), 400):
         chunk = " ".join("wd:" + i for i in ids[start:start + 400])
         rows += sparql(f"{kind}-labels-{country}-{lang}-{start}", f"""
-            SELECT ?item ?label ?native ?en ?kana ?female WHERE {{
+            SELECT ?item ?label ?native ?en ?kana ?female ?ws WHERE {{
               VALUES ?item {{ {chunk} }}
               OPTIONAL {{ ?item rdfs:label ?label . FILTER(LANG(?label) = "{lang}") }}
               OPTIONAL {{ ?item wdt:P1705 ?native . FILTER(LANG(?native) = "{lang}") }}
               OPTIONAL {{ ?item rdfs:label ?en . FILTER(LANG(?en) = "en") }}
               OPTIONAL {{ ?item wdt:P1814 ?kana }}
               OPTIONAL {{ ?item wdt:P2521 ?female . FILTER(LANG(?female) = "{lang}") }}
+              OPTIONAL {{ ?item wdt:P282 ?ws }}
             }}""")
+    systems = collections.defaultdict(set)
+    for r in rows:
+        if "ws" in r:
+            systems[_qid(r["item"])].add(_qid(r["ws"]))
     out = {}
-    for r in sorted(rows, key=lambda r: (r["item"], r.get("label", ""), r.get("en", ""), r.get("kana", ""), r.get("female", ""))):
-        r = dict(r)
+    for r in sorted(rows, key=lambda r: (r["item"], r.get("label", ""), r.get("en", ""), r.get("kana", ""), r.get("female", ""), r.get("ws", ""))):
+        r = dict(r, systems=systems.get(_qid(r["item"]), set()))
         # The native label (P1705) where the item has no label in the language.
         if "label" not in r and "native" in r:
             r["label"] = r["native"]
@@ -62,9 +67,42 @@ def _labels(kind, country, lang, ids):
     return out
 
 
-def _name_ok(name, script):
+# The writing systems (P282) a name item of each script may state: an item that states others
+# only (the Latin-script "Elena", whose Russian label is a transcription) is not the language's own
+# spelling of the name.
+SCRIPT_ITEMS = {"Latn": {"Q8229"}, "Cyrl": {"Q8209"}, "Grek": {"Q8216"}, "Arab": {"Q8196"},
+                "Hebr": {"Q33513"}, "Deva": {"Q38592"}, "Thai": {"Q236376"},
+                "Hans": {"Q8201", "Q185614"}, "Hant": {"Q8201", "Q178528"},
+                "Jpan": {"Q82772", "Q48332", "Q82946", "Q8201"}, "Kore": {"Q8222", "Q8201"}}
+
+# The languages whose names Wikidata spells in their own script as items of their own (Елена
+# beside the Latin-script Elena), so that an item written in another script only is a
+# transcription. Elsewhere (Arabic, Japanese) a Latin-script item's label in the language is the
+# native name.
+STRICT_WRITING = {"ru", "uk", "bg", "sr-Cyrl", "el", "th"}
+
+# The letters each Cyrillic alphabet has: a Russian name with the Serbian Ј is no Russian name.
+CYRILLIC_LETTERS = {
+    "ru": set("абвгдеёжзийклмнопрстуфхцчшщъыьэюя"),
+    "uk": set("абвгґдеєжзиіїйклмнопрстуфхцчшщьюя’'"),
+    "bg": set("абвгдежзийклмнопрстуфхцчшщъьюя"),
+    "sr-Cyrl": set("абвгдђежзијклљмнњопрстћуфхцчџш"),
+}
+
+
+def _name_ok(name, script, tag=None, systems=frozenset()):
     letters = name.replace(" ", "").replace("-", "").replace("'", "").replace("’", "")
-    return bool(letters) and text.in_script(letters, script)
+    if not letters or not text.in_script(letters, script):
+        return False
+    if tag in STRICT_WRITING and systems and not systems & SCRIPT_ITEMS.get(script, set()):
+        return False
+    if tag in CYRILLIC_LETTERS and not set(letters.lower()) <= CYRILLIC_LETTERS[tag]:
+        return False
+    if tag == "th" and " " in name:
+        return False  # Thai writes a given or a family name as one word
+    if tag == "ar" and any(len(part) < 3 for part in name.split()):
+        return False  # a compound cut short, such as عبد ال
+    return True
 
 
 def _latin_ok(s):
@@ -103,7 +141,9 @@ def _form(tag, script, name, en, kana, family_name=False):
     else:
         if not _latin_ok(en):
             return None
-        latin = en
+        # An English label may carry a scholarly transcription (Faraḥ) or another language's
+        # letters (Hafız): the latin form is its plain Latin letters.
+        latin = romanize.ascii_fold(en)
     if latin != name:
         entry["latin"] = latin
     ascii_form = romanize.ascii_fold(latin)
@@ -146,7 +186,7 @@ def given(tag, conf, limit=120):
     for item, (f, m) in sorted(counts.items(), key=lambda kv: (-sum(kv[1]), kv[0])):
         r = labels.get(item, {})
         name = r.get("label")
-        if not name or not _name_ok(name, script):
+        if not name or not _name_ok(name, script, tag, r.get("systems", set())):
             continue
         if script in ("Hans", "Hant") and len(name) > 2:
             continue  # a transcribed foreign name, such as 约瑟夫
@@ -189,7 +229,7 @@ def family(tag, conf, limit=160):
     for item, n in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0])):
         r = labels.get(item, {})
         name = r.get("label")
-        if not name or name in seen or not _name_ok(name, script):
+        if not name or name in seen or not _name_ok(name, script, tag, r.get("systems", set())):
             continue
         if script in ("Hans", "Hant") and len(name) > 2:
             continue  # a transcribed foreign name

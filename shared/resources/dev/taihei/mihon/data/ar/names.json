@@ -61,7 +61,6 @@
     {"name":"رضوى","latin":"Radwa","weight":6},
     {"name":"أماني","latin":"Amani","weight":6},
     {"name":"فاتن","latin":"Faten","weight":6},
-    {"name":"مي","latin":"Mai","weight":6},
     {"name":"لينا","latin":"Lina","weight":6},
     {"name":"كريمة","latin":"Karima","weight":6},
     {"name":"نانسي","latin":"Nancy","weight":6},
@@ -83,7 +82,7 @@
     {"name":"مديحة","latin":"Madiha","weight":5},
     {"name":"فوزية","latin":"Fouzia","weight":5},
     {"name":"كوثر","latin":"Kaouther","weight":5},
-    {"name":"فرح","latin":"Faraḥ","ascii":"Farah","weight":5},
+    {"name":"فرح","latin":"Farah","weight":5},
     {"name":"أميمة","latin":"Omaima","weight":5},
     {"name":"نهلة","latin":"Nahla","weight":5},
     {"name":"فايزة","latin":"Fayza","weight":5},
@@ -120,8 +119,9 @@
     {"name":"منة الله","latin":"Mennatallah","weight":3},
     {"name":"جهاد","latin":"Jihad","weight":1},
     {"name":"عزيزة","latin":"Aziza","weight":3},
-    {"name":"إحسان","latin":"Eḥsan","ascii":"Ehsan","weight":2},
-    {"name":"ساندي","latin":"Sandy","weight":3}
+    {"name":"إحسان","latin":"Ehsan","weight":2},
+    {"name":"ساندي","latin":"Sandy","weight":3},
+    {"name":"سورايا","latin":"Soraya","weight":3}
   ],
   "male": [
     {"name":"محمد","latin":"Muhammad","weight":613},
@@ -201,7 +201,6 @@
     {"name":"عبد الرحيم","latin":"Abd al-Rahim","weight":10},
     {"name":"إسلام","latin":"Islam","weight":10},
     {"name":"عثمان","latin":"Osman","weight":9},
-    {"name":"عبد ال","latin":"Abdel","weight":9},
     {"name":"صبري","latin":"Sabri","weight":9},
     {"name":"مختار","latin":"Mokhtar","weight":9},
     {"name":"عبد القادر","latin":"Abd al-Qadir","weight":9},
@@ -228,8 +227,7 @@
     {"name":"بيير","latin":"Pierre","weight":7},
     {"name":"عبد العظيم","latin":"Abd al-Azim","weight":7},
     {"name":"عبد الباسط","latin":"Abdulbasit","weight":7},
-    {"name":"طه","latin":"Taha","weight":7},
-    {"name":"حافظ","latin":"Hafız","ascii":"Hafiz","weight":7},
+    {"name":"حافظ","latin":"Hafiz","weight":7},
     {"name":"بول","latin":"Paul","weight":7},
     {"name":"عبده","latin":"Abdou","weight":7},
     {"name":"رجاء","latin":"Ragaa","weight":2},
@@ -243,7 +241,9 @@
     {"name":"شوقي","latin":"Shawqi","weight":6},
     {"name":"توفيق","latin":"Tawfik","weight":6},
     {"name":"لطفي","latin":"Lotfi","weight":6},
-    {"name":"رمضان","latin":"Ramadan","weight":6}
+    {"name":"رمضان","latin":"Ramadan","weight":6},
+    {"name":"عبد المجيد","latin":"'Abd al-Majid","weight":6},
+    {"name":"أنس","latin":"Anas","weight":6}
   ],
   "family": [
     {"name":"محمد","latin":"Mohamed","weight":45},
@@ -290,7 +290,6 @@
     {"name":"عثمان","latin":"Osman","weight":8},
     {"name":"حمزة","latin":"Hamza","weight":8},
     {"name":"عباس","latin":"Abbas","weight":8},
-    {"name":"طه","latin":"Taha","weight":8},
     {"name":"شحاتة","latin":"Shehata","weight":8},
     {"name":"عبد الله","latin":"Abdullah","weight":8},
     {"name":"قنديل","latin":"Kandil","weight":8},
@@ -391,7 +390,6 @@
     {"name":"عيسوي","latin":"Essawy","weight":3},
     {"name":"شومان","latin":"Shuman","weight":3},
     {"name":"الهلباوي","latin":"Al-Helbawy","weight":3},
-    {"name":"عز الدين","latin":"Izz Ad-Din","weight":3},
     {"name":"السلاموني","latin":"Al-Salamouni","weight":3},
     {"name":"الشاروني","latin":"Al-Sharuni","weight":3},
     {"name":"السعدني","latin":"Al-Saadany","weight":3},
@@ -405,6 +403,8 @@
     {"name":"داؤد","latin":"Daoud","weight":3},
     {"name":"أيوب","latin":"Ayoub","weight":3},
     {"name":"حرب","latin":"Harb","weight":3},
-    {"name":"خميس","latin":"Khamis","weight":3}
+    {"name":"خميس","latin":"Khamis","weight":3},
+    {"name":"عدوي","latin":"Adawi","weight":3},
+    {"name":"رشيد","latin":"Rashid","weight":3}
   ]
 }
