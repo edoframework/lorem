@@ -4,8 +4,8 @@ import java.security.SecureRandom
 import java.time.{LocalDate, ZoneId}
 import java.util.UUID
 
-import dev.taihei.i18n.Language
 import dev.taihei.mihon.sources.*
+import dev.taihei.tsuji.Language
 
 /**
  * Fake data for tests, seed data and mock-ups: filler text, people, contact details, addresses,
@@ -25,7 +25,7 @@ import dev.taihei.mihon.sources.*
 object LoremIpsum:
   private val random = new SecureRandom()
 
-  /** Every language taihei-i18n knows. */
+  /** Every language taihei-tsuji knows. */
   def languages: Array[Language] = Language.values
 
   /** One of [[languages]], each equally likely. */

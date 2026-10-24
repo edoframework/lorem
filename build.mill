@@ -23,7 +23,7 @@ object V {
   val zioJson             = "1.1.1"
   val scalaJavaTime       = "2.8.0"
   val scalaJsSecureRandom = "1.0.0"
-  val taiheiI18n          = "4.0.2" // dev.taihei::taihei-i18n (Language)
+  val taiheiTsuji         = "5.0.0" // dev.taihei::taihei-tsuji (Language)
 }
 
 // ---------------------------------------------------------------------------
@@ -194,7 +194,7 @@ val wsRoot = os.Path(sys.env("MILL_WORKSPACE_ROOT"))
 // Module: mihon (cross-platform JVM + JS)
 //   shared sources compile on both platforms; jvm/ and js/ hold the
 //   platform-specific resource loaders (the JVM reads the name lists from the
-//   classpath; JS embeds them). Depends on taihei-i18n for Language.
+//   classpath; JS embeds them). Depends on taihei-tsuji for Language.
 // ---------------------------------------------------------------------------
 object mihon extends Module {
   object jvm extends TaiheiModule {
@@ -210,7 +210,7 @@ object mihon extends Module {
 
     def mvnDeps = Seq(
       mvn"dev.zio::zio-json:${V.zioJson}",
-      mvn"dev.taihei::taihei-i18n:${V.taiheiI18n}",
+      mvn"dev.taihei::taihei-tsuji:${V.taiheiTsuji}",
     )
 
     object test extends TaiheiTests {
@@ -230,7 +230,7 @@ object mihon extends Module {
 
     def mvnDeps = Seq(
       mvn"dev.zio::zio-json::${V.zioJson}",
-      mvn"dev.taihei::taihei-i18n::${V.taiheiI18n}",
+      mvn"dev.taihei::taihei-tsuji::${V.taiheiTsuji}",
     ) ++ jsDeps
 
     object test extends TaiheiJSTests {
