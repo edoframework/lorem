@@ -14,7 +14,14 @@ CENSUS_FIRST = "https://www2.census.gov/topics/genealogy/1990surnames/dist.{}.fi
 CENSUS_SURNAMES = "https://www2.census.gov/topics/genealogy/2010surnames/names.zip"
 
 
+# The Census lists drop apostrophes: OBRIEN is O'Brien.
+APOSTROPHE = {"OBRIEN": "O'Brien", "OCONNOR": "O'Connor", "ONEILL": "O'Neill", "ONEAL": "O'Neal",
+              "ODONNELL": "O'Donnell", "OHARA": "O'Hara", "OKEEFE": "O'Keefe"}
+
+
 def _title(upper):
+    if upper in APOSTROPHE:
+        return APOSTROPHE[upper]
     name = upper[:1] + upper[1:].lower()
     if name.startswith("Mc") and len(name) > 2:
         name = "Mc" + name[2].upper() + name[3:]
@@ -39,7 +46,11 @@ def census(limit_given=200, limit_family=300):
         name = row["name"]
         if not name.isalpha():
             continue  # "ALL OTHER NAMES"
-        family.append({"name": _title(name), "weight": max(1, int(row["count"]) // 1000)})
+        title = _title(name)
+        entry = {"name": title, "weight": max(1, int(row["count"]) // 1000)}
+        if "'" in title:
+            entry["ascii"] = title.replace("'", "")
+        family.append(entry)
         if len(family) == limit_family:
             break
     return {"female": first("female"), "male": first("male"), "family": family}

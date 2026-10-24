@@ -663,7 +663,7 @@
     {"name": "Carr", "weight": 119},
     {"name": "Lawson", "weight": 119},
     {"name": "Jacobs", "weight": 118},
-    {"name": "Obrien", "weight": 118},
+    {"name": "O'Brien", "weight": 118, "ascii": "OBrien"},
     {"name": "Lynch", "weight": 117},
     {"name": "Singh", "weight": 116},
     {"name": "Vega", "weight": 116},

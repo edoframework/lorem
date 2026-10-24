@@ -118,7 +118,7 @@ object MihonSpec extends ZIOSpecDefault:
         )
       },
       test("an American phone number is in the range reserved for fiction") {
-        assertTrue(many(200)(en.phone).forall(_.matches("\\+1 [1-9][0-9]{2} 555-01[0-9]{2}")))
+        assertTrue(many(200)(en.phone).forall(_.matches("\\+1 [2-9][0-9]{2} 555-01[0-9]{2}")))
       },
       test("postal codes and phone numbers use every digit, 0 and 9 included") {
         val digits = many(200)(en.postalCode + en.phone).mkString.filter(_.isDigit).toSet

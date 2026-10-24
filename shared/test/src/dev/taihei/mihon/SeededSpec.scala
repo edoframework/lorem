@@ -31,15 +31,15 @@ object SeededSpec extends ZIOSpecDefault:
   // generator draws changes them: update them in that change, and say so in the release notes.
   private val golden: Map[String, List[String]] = Map(
     "en" -> List(
-      "Call known her buy than natural look or won meeting yesterday thing?",
+      "Date still as somebody extremely other pick brother go this clothes life?",
       "Virginia Wood",
       "Virginia Wood",
       "-",
       "charles.white@lunarbytefusion.example",
-      "180 Cedar Lane, Queens, New York 77233, United States",
-      "+1 537 555-0154",
-      "Books Want Advice",
-      "bigger",
+      "180 Cedar Lane, Chicago, Illinois 77233, United States",
+      "+1 737 555-0154",
+      "Father City Soup",
+      "and",
     ),
     "la" -> List(
       "Quas rutrum ferri amet eloquentiam sanctus lorem mollis referrentur habitasse graecis alterum?",

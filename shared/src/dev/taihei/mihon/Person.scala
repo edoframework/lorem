@@ -8,19 +8,21 @@ import dev.taihei.mihon.data.Form
  * release can add a field.
  *
  * {{{
- * val ja = Mihon.seeded(1L, Language("ja")).person
- * ja.fullName // "山田太郎": family name first, no space
- * ja.reading  // Some("ヤマダ タロウ")
- * ja.latin    // "Yamada Taro"
+ * val p = Mihon.seeded(1L).person
+ * p.fullName // a given name, a space and a family name in English
+ * p.latin    // the same in a language in Latin script
+ * p.reading  // None: only Japanese has a reading
  * }}}
  */
 final class Person private[mihon] (
   givenForm: Form,
   familyForm: Form,
-  /** The list the given name was drawn from, and so the form of the family name. */
-  val gender: Gender,
+  genderOfName: Gender,
   familyFirst: Boolean,
   separator: String):
+
+  /** The list the given name was drawn from, and so the form of the family name. */
+  def gender: Gender = genderOfName
 
   /** The given name, in the language's script. */
   def givenName: String = givenForm.name

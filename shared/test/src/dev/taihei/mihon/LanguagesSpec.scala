@@ -38,7 +38,7 @@ object LanguagesSpec extends ZIOSpecDefault:
     Conventions(Latin, west ++ quotes, west ++ quotes, true, familyFirst, " ", country, postal, phone)
 
   private val conventions: Map[String, Conventions] = Map(
-    "en" -> latin("US", "[0-9]{5}", "\\+1 [1-9][0-9]{2} 555-01[0-9]{2}", Set("“", "”")),
+    "en" -> latin("US", "[0-9]{5}", "\\+1 [2-9][0-9]{2} 555-01[0-9]{2}", Set("“", "”")),
     "la" -> latin("VA", "00120", "\\+39 06 698[0-9]{5}", Set("“", "”")),
   )
 

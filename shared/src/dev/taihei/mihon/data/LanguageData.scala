@@ -134,9 +134,9 @@ private[mihon] object LanguageData:
   private lazy val aliases: Map[String, String]     = catalog.aliases.toMap
 
   /**
-   * The language whose data serves `language`: its tag, then an alias (`zh-TW` is `zh-Hant`), then
+   * The language whose data serves `language`: its tag, then an alias from languages.json, then
    * the tag with subtags stripped from the right (RFC 4647 lookup: `nl-BE` is `nl`). A tag that
-   * names a script other than the one found is refused (`sr-Latn` is not served by `sr-Cyrl`), so
+   * names a script other than the one found is refused (`en-Cyrl` is not served by `en`), so
    * a caller never gets text in a script it did not ask for.
    */
   def resolve(language: Language): Option[LanguageData] =

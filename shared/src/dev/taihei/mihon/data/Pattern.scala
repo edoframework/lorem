@@ -3,7 +3,8 @@ package dev.taihei.mihon.data
 import java.util.Random
 
 // Fills the patterns of the data files. In a code pattern (postal codes, phone numbers) `#` is a
-// digit 0 to 9, `N` a digit 1 to 9 and `?` an ASCII capital letter; anything else stays as it is.
+// digit 0 to 9, `N` a digit 1 to 9, `%` a digit 2 to 9 (a NANP area code starts with one) and
+// `?` an ASCII capital letter; anything else stays as it is.
 // Digits are ASCII in every language: localised digits are for a formatter such as Tsuji.
 private[mihon] object Pattern:
 
@@ -12,6 +13,7 @@ private[mihon] object Pattern:
     pattern.foreach {
       case '#' => out.append(('0' + random.nextInt(10)).toChar)
       case 'N' => out.append(('1' + random.nextInt(9)).toChar)
+      case '%' => out.append(('2' + random.nextInt(8)).toChar)
       case '?' => out.append(('A' + random.nextInt(26)).toChar)
       case c   => out.append(c)
     }

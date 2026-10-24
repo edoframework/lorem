@@ -191,21 +191,21 @@
     "bytes": 24918676,
     "retrieved": "2026-10-24"
   },
-  "wikidata/cities-US-100000.json": {
+  "wikidata/cities-US-100000-5dc2183a6c63.json": {
     "url": "https://query.wikidata.org/sparql (query in scripts/data)",
-    "sha256": "55206f96dd6dd2ca30a1db8d6e8808dff9976c99717db104aa0a9434239a9caa",
-    "bytes": 102182,
+    "sha256": "8f1b00feb15e705b8e4d902889993213c1fcb3a072b20ce339db47b6f8ed3c91",
+    "bytes": 92466,
     "retrieved": "2026-10-24"
   },
-  "wikidata/city-labels-US-en.json": {
+  "wikidata/city-labels-US-en-612bee56effd.json": {
     "url": "https://query.wikidata.org/sparql (query in scripts/data)",
-    "sha256": "b9e3b16266b3aadc7f329f5350fa5b5dd3945eae62b67435b85d82f80d56e98f",
-    "bytes": 132063,
+    "sha256": "93d484df82180cf0dd916ca68d99e747f7f0ca23b8d9f165c93e53fbdf506a4c",
+    "bytes": 119226,
     "retrieved": "2026-10-24"
   },
-  "wikidata/countries-la.json": {
+  "wikidata/countries-la-c7530040f26b.json": {
     "url": "https://query.wikidata.org/sparql (query in scripts/data)",
-    "sha256": "a2468dca0b5f37d419c30c3fd0877e9dfe7c50ee4b319a62580eef241928a51a",
+    "sha256": "7713e175339f68f3b240a8bc7b6a57884afaec221f5eb054cf3447fc79a9b32e",
     "bytes": 49396,
     "retrieved": "2026-10-24"
   }

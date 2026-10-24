@@ -7,7 +7,7 @@ Address lines: {street} {city} {region} {postalCode} {country}. Streets: {family
 {familyFemale} (a family name in its male or female form; in Russian, Ukrainian and Greek the
 female form is also the genitive a street name takes), {given}, {word} and {Word} (a word of the
 language's text, the second capitalised), {number} (1 to 200) and {small} (1 to 30). Codes: #
-a digit, N a digit 1 to 9, ? an ASCII capital letter.
+a digit, N a digit 1 to 9, % a digit 2 to 9, ? an ASCII capital letter.
 
 A phone pattern is fictional only where the country reserves the range for fiction and the
 reservation is cited in docs/data-sources.md (NANP 555-0100 to 555-0199)."""
@@ -15,7 +15,7 @@ reservation is cited in docs/data-sources.md (NANP 555-0100 to 555-0199)."""
 COUNTRIES = {
     "US": dict(
         lines=["{street}", "{city}, {region} {postalCode}", "{country}"], separator=", ",
-        postalCode="#####", phone="+1 N## 555-01##", fictionalPhone=True,
+        postalCode="#####", phone="+1 %## 555-01##", fictionalPhone=True,
         streets=["{number} {family} Street", "{number} {family} Avenue", "{number} {family} Road",
                  "{number} {given} Drive", "{number} Main Street", "{number} Oak Street",
                  "{number} Maple Avenue", "{number} Park Avenue", "{number} Pine Street",

@@ -61,8 +61,10 @@ def fetch(key, url):
 
 
 def sparql(key, query):
-    """The bindings of a Wikidata Query Service query, cached under `key` and recorded like a
-    download, so a rebuild repeats the same data."""
+    """The bindings of a Wikidata Query Service query, cached under `key` and a hash of the query,
+    and recorded like a download, so a rebuild repeats the same data and a changed query asks
+    again."""
+    key = f"{key}-{hashlib.sha256(' '.join(query.split()).encode()).hexdigest()[:12]}"
     path = CACHE / "wikidata" / f"{key}.json"
     url = "https://query.wikidata.org/sparql?" + urllib.parse.urlencode({"query": query, "format": "json"})
     if not path.exists():

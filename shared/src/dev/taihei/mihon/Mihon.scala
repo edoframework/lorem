@@ -24,7 +24,7 @@ import dev.taihei.tsuji.Language
  * One instance may be shared across threads: it stays thread-safe, but which thread gets which
  * value then depends on scheduling, so the values are no longer reproducible.
  *
- * Mihon is for tests and mock-ups. Its data for 25 languages adds a few megabytes to a Scala.js
+ * Mihon is for tests and mock-ups. Its data for all its languages adds megabytes to a Scala.js
  * bundle, so it does not belong in a production browser bundle.
  *
  * {{{
@@ -35,9 +35,9 @@ import dev.taihei.tsuji.Language
  * en.name     // a name such as "Linda Robinson"
  * en.email    // "linda.robinson@brightwavehub.example"
  *
- * val ja = en.withLanguage(Language("ja"))
- * ja.sentence // Japanese text, without spaces, ending in 。, ？ or ！
- * ja.person.fullName // family name first
+ * val la = en.withLanguage(Language("la"))
+ * la.sentence // Lorem Ipsum
+ * la.person.fullName // a Roman name such as "Gaius Iulius"
  * }}}
  */
 final class Mihon private (
@@ -47,7 +47,7 @@ final class Mihon private (
 
   /**
    * The language whose data this generator uses: the one it was asked for, or the language that
-   * serves it (`nl` for `nl-BE`, `zh-Hant` for `zh-TW`), see [[Mihon.resolve]].
+   * serves it (`en` for `en-GB`), see [[Mihon.resolve]].
    */
   def language: Language = data.language
 
@@ -317,7 +317,7 @@ final class Mihon private (
         ).trim
       }
       .filter(_.nonEmpty)
-    new Address(lines, lines.mkString(c.separator), str, postal, city.name, region, name, c.code)
+    new Address(lines, c.separator, str, postal, city.name, region, name, c.code)
 
   end address
 
@@ -435,10 +435,9 @@ object Mihon:
 
   /**
    * The language a factory would use for `language`, or `None` when Mihon has none for it. The tag
-   * is looked up as it is, then as an alias (`zh`, `zh-CN` and `zh-SG` are `zh-Hans`; `zh-TW`,
-   * `zh-HK` and `zh-MO` are `zh-Hant`; `sr` and `sr-RS` are `sr-Cyrl`), then with subtags stripped
-   * from the right (`nl-BE` is `nl`, `en-GB` is `en`). A tag that names another script than the
-   * one found is refused (`sr-Latn`). Code with input from outside asks first:
+   * is looked up as it is, then as an alias the data defines, then with subtags stripped from the
+   * right (`en-GB` is `en`, `la-VA` is `la`). A tag that names another script than the one found
+   * is refused (`en-Cyrl`). Code with input from outside asks first:
    *
    * {{{
    * val mihon = Mihon.secure(Mihon.resolve(requested).getOrElse(Language.English))

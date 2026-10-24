@@ -4,7 +4,7 @@ import zio.json.*
 
 // The JSON files under dev/taihei/mihon/data/, as they are written. build.mill checks the same
 // shape when it builds (EmbeddedData.check), so a decoding failure here is a packaging bug.
-// Fields are documented in docs/skill/reference/internals.md and scripts/data/README.md.
+// The fields are described in docs/skill/reference/internals.md and scripts/data/README.md.
 
 // languages.json
 final private[mihon] case class LanguageEntry(

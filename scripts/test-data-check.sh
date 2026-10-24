@@ -45,6 +45,7 @@ refuses "a name without an ASCII form" "no ASCII form" edit en/names.json "d['ma
 refuses "an unknown street placeholder" "unknown placeholders" edit en/country-US.json "d['streets'][0] = '{secret}'"
 refuses "an unknown address field" "unknown placeholders" edit en/country-US.json "d['lines'][0] = '{password}'"
 refuses "a city in no listed region" "not one of regions" edit en/country-US.json "d['cities'][0]['region'] = 'Atlantis'"
+refuses "city weights beyond Int.MaxValue" "add up beyond" edit en/country-US.json "d['cities'][0]['weight'] = 2147483647; d['cities'][1]['weight'] = 2147483647"
 refuses "a phone pattern without a calling code" "phone: not" edit en/country-US.json "d['phone'] = '555-0100'"
 refuses "an alias of a language without data" "an alias of a language without data" edit languages.json "d['aliases'] = [['xx', 'yy']]"
 refuses "unsorted countries" "not sorted" edit en/countries.json "d.reverse()"

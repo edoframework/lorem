@@ -47,3 +47,7 @@ hs_err_pid*
 
 # Review reports, kept locally
 reviews/
+
+# Python bytecode of the data scripts
+__pycache__/
+*.pyc

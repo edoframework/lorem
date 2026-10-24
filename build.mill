@@ -440,15 +440,17 @@ object EmbeddedData {
     str(file, o("separator"), "separator")
     if (!ascii(str(file, o("postalCode"), "postalCode"))) fail(file, "postalCode: not ASCII")
     val regions = weighted(file, o("regions"), "regions", nonEmpty = false).toSet
+    var cityTotal = 0L
     arr(file, o("cities"), "cities").zipWithIndex.foreach { case (v, i) =>
       val c = obj(file, v, s"cities[$i]", Set("name", "weight"), Set("region"))
       str(file, c("name"), s"cities[$i].name", nonEmpty = true)
-      int(file, c("weight"), s"cities[$i].weight", 1, Int.MaxValue)
+      cityTotal += int(file, c("weight"), s"cities[$i].weight", 1, Int.MaxValue)
       c.get("region").foreach(r => if (!regions(str(file, r, s"cities[$i].region"))) fail(file, s"cities[$i].region: not one of regions"))
     }
+    if (cityTotal > Int.MaxValue) fail(file, s"cities: the weights add up beyond ${Int.MaxValue}")
     arr(file, o("streets"), "streets").zipWithIndex.foreach { case (v, i) => template(file, v, s"streets[$i]", streetFields) }
     val phone = str(file, o("phone"), "phone")
-    if (!phone.matches("\\+[0-9]{1,3} [0-9#N ()-]+")) fail(file, s"phone: not +<calling code> and a national pattern: $phone")
+    if (!phone.matches("\\+[0-9]{1,3} [0-9#N% ()-]+")) fail(file, s"phone: not +<calling code> and a national pattern: $phone")
     bool(file, o("fictionalPhone"), "fictionalPhone")
   }
 

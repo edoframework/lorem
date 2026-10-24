@@ -77,7 +77,11 @@ def sentences(conf, tag):
             yield unicodedata.normalize("NFC", parts[2])
 
 
-TOKEN = re.compile(r"[^\W\d_](?:[\w’'ʼ]*[^\W\d_])?|[^\W\d_]")
+# A run of word characters and apostrophes; one that holds a digit or an underscore ("5th") is
+# not a word, and neither is any part of it.
+TOKEN = re.compile(r"[\w'\u2019\u02bc]+")
+# Words a language capitalises wherever they stand, which the proper-noun rule would drop.
+ALWAYS_CAPITALISED = {"en": {"i": "I"}}
 
 
 def tokens_of(sentence, conf, tag):
@@ -85,6 +89,9 @@ def tokens_of(sentence, conf, tag):
         return None
     out = []
     for t in TOKEN.findall(sentence):
+        t = t.strip("'\u2019\u02bc")
+        if not t or any(c.isdigit() or c == "_" for c in t):
+            continue
         if any(a in t for a in "’'ʼ"):
             # An apostrophe is part of a Ukrainian word (п'ять); elsewhere it marks an elision or
             # a possessive, whose parts are not words of their own.
@@ -130,6 +137,12 @@ def words(tag, conf, names, script_filter=None, limit=1500):
         if script in SEGMENTED and any(len(b) >= 2 and b in key for b in bad):
             continue
         form = key
+        keep = ALWAYS_CAPITALISED.get(tag, {})
+        if key in keep:
+            ranked.append((keep[key], count))
+            if len(ranked) == limit:
+                break
+            continue
         if cased:
             seen = non_initial[key]
             if seen == 0:

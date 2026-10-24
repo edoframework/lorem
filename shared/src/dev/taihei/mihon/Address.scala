@@ -12,22 +12,38 @@ package dev.taihei.mihon
  * }}}
  */
 final class Address private[mihon] (
+  lineList: List[String],
+  separator: String,
+  streetName: String,
+  code: String,
+  cityName: String,
+  regionName: Option[String],
+  countryName: String,
+  isoCode: String):
+
   /** The lines of the address, top to bottom, in the country's format. */
-  val lines: List[String],
+  def lines: List[String] = lineList
+
   /** The lines on one line, joined by the separator the language uses for that. */
-  val singleLine: String,
+  def singleLine: String = lineList.mkString(separator)
+
   /** The street and the house number, or, in Japan, the block and lot. */
-  val street: String,
+  def street: String = streetName
+
   /** The postal code, in the country's pattern, with ASCII digits. */
-  val postalCode: String,
+  def postalCode: String = code
+
   /** The city. */
-  val city: String,
+  def city: String = cityName
+
   /** The state or province, where the country's format names one (US, Brazil, India). */
-  val region: Option[String],
+  def region: Option[String] = regionName
+
   /** The country's name, in the generator's language. */
-  val country: String,
+  def country: String = countryName
+
   /** The country's ISO 3166-1 alpha-2 code, such as `US`. */
-  val countryCode: String):
+  def countryCode: String = isoCode
 
   /** The [[singleLine]]. */
   override def toString: String = singleLine

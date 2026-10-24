@@ -13,11 +13,15 @@ def _largest(country, qid, threshold):
     return sparql(f"cities-{country}-{threshold}", f"""
         SELECT ?item (MAX(?p) AS ?pop) WHERE {{
           {{ SELECT ?item ?p WHERE {{ ?item wdt:P17 wd:{qid}; wdt:P1082 ?p . FILTER(?p > {threshold}) }} }}
-          # A settlement by at least one class that is not an urban or metropolitan area, of
-          # which Wikidata holds many with populations larger than any city's.
+          # A settlement by at least one class that is not an urban or metropolitan area (of
+          # which Wikidata holds many with populations larger than any city's), nor a
+          # neighbourhood, quarter or district of a city.
           FILTER EXISTS {{ ?item wdt:P31 ?c . ?c wdt:P279* wd:Q486972 .
                            FILTER NOT EXISTS {{ ?c wdt:P279* wd:Q702492 }}
-                           FILTER NOT EXISTS {{ ?c wdt:P279* wd:Q1907114 }} }}
+                           FILTER NOT EXISTS {{ ?c wdt:P279* wd:Q1907114 }}
+                           FILTER NOT EXISTS {{ ?c wdt:P279* wd:Q123705 }}
+                           FILTER NOT EXISTS {{ ?c wdt:P279* wd:Q2983893 }}
+                           FILTER NOT EXISTS {{ ?c wdt:P279* wd:Q4286337 }} }}
           FILTER NOT EXISTS {{ ?item wdt:P576 ?end }}
         }} GROUP BY ?item ORDER BY DESC(?pop) LIMIT 400""")
 

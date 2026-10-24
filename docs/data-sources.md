@@ -5,7 +5,9 @@ under `shared/resources/dev/taihei/mihon/data/`; the scripts in `scripts/data/` 
 build never runs the scripts and needs nothing but Maven Central; the raw downloads stay in a
 cache outside the repository (`MIHON_DATA_CACHE`, `~/.cache/taihei-mihon-data` by default) and
 never enter it. `scripts/data/sources.lock.json` records the URL, size, retrieval date and SHA-256
-of each download; the table at the end of this page is generated from it.
+of each download; the table at the end of this page is generated from it. Tatoeba publishes
+its exports weekly under the same URL, so a later download differs: the date and SHA-256 identify
+the file the data was built from.
 
 Each source's licence was checked before its data was committed. Only single words and names are
 taken; no sentence, and no span of more than one word, from any source is reproduced.
@@ -97,6 +99,6 @@ the reservation is cited here; elsewhere a number may be real.
 | [cldr-47.0.0/cldr-misc-full/main/zh/delimiters.json](https://cdn.jsdelivr.net/npm/cldr-misc-full@47.0.0/main/zh/delimiters.json) | 2026-10-24 | 267 | `70d8c955b62e4c94f36aafd9d015a0154fad3a11bf7fc4e82b241ecb8876cb16` |
 | [ldnoobw-5faf2ba42d7b/en](https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/5faf2ba42d7b1c0977169ec3611df25a3c08eb13/en) | 2026-10-24 | 3777 | `af851ecef1d5f212caba17339b12ac39cc2fef7d78c74876f67237644fcee8bd` |
 | [tatoeba/eng_sentences.tsv.bz2](https://downloads.tatoeba.org/exports/per_language/eng/eng_sentences.tsv.bz2) | 2026-10-24 | 24918676 | `f634eaaf26623c2a2e170be2dae54b18388479311ae8619d04889df4e5d021f3` |
-| wikidata/cities-US-100000.json (Wikidata Query Service) | 2026-10-24 | 102182 | `55206f96dd6dd2ca30a1db8d6e8808dff9976c99717db104aa0a9434239a9caa` |
-| wikidata/city-labels-US-en.json (Wikidata Query Service) | 2026-10-24 | 132063 | `b9e3b16266b3aadc7f329f5350fa5b5dd3945eae62b67435b85d82f80d56e98f` |
-| wikidata/countries-la.json (Wikidata Query Service) | 2026-10-24 | 49396 | `a2468dca0b5f37d419c30c3fd0877e9dfe7c50ee4b319a62580eef241928a51a` |
+| wikidata/cities-US-100000-5dc2183a6c63.json (Wikidata Query Service) | 2026-10-24 | 92466 | `8f1b00feb15e705b8e4d902889993213c1fcb3a072b20ce339db47b6f8ed3c91` |
+| wikidata/city-labels-US-en-612bee56effd.json (Wikidata Query Service) | 2026-10-24 | 119226 | `93d484df82180cf0dd916ca68d99e747f7f0ca23b8d9f165c93e53fbdf506a4c` |
+| wikidata/countries-la-c7530040f26b.json (Wikidata Query Service) | 2026-10-24 | 49396 | `7713e175339f68f3b240a8bc7b6a57884afaec221f5eb054cf3447fc79a9b32e` |
