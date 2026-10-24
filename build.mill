@@ -105,9 +105,9 @@ trait TaiheiPublishSettings extends PublishModule {
   def pomSettings = PomSettings(
     description = "Composable, cross-platform fake-data and Lorem Ipsum generator for Scala 3; JVM & JS",
     organization = "dev.taihei",
-    url = "https://github.com/taiheiframework/lorem",
+    url = "https://github.com/taiheiframework/mihon",
     licenses = Seq(License.`Apache-2.0`),
-    versionControl = VersionControl.github("taiheiframework", "lorem"),
+    versionControl = VersionControl.github("taiheiframework", "mihon"),
     developers = Seq(
       Developer("innovenso", "Innovenso BV", "https://taihei.dev", Some("Innovenso BV"), Some("https://innovenso.com")),
     ),
@@ -185,14 +185,14 @@ trait TaiheiJSModule extends ScalaJSModule with ScalafmtModule with ScalafixModu
 val wsRoot = os.Path(sys.env("MILL_WORKSPACE_ROOT"))
 
 // ---------------------------------------------------------------------------
-// Module: lorem (cross-platform JVM + JS)
+// Module: mihon (cross-platform JVM + JS)
 //   shared sources compile on both platforms; jvm/ and js/ hold the
 //   platform-specific resource loaders (the JVM reads the name lists from the
 //   classpath; JS embeds them). Depends on taihei-i18n for Language.
 // ---------------------------------------------------------------------------
-object lorem extends Module {
+object mihon extends Module {
   object jvm extends TaiheiModule {
-    def artifactName = "taihei-lorem"
+    def artifactName = "taihei-mihon"
 
     def sources = Task.Sources(
       wsRoot / "shared" / "src",
@@ -215,7 +215,7 @@ object lorem extends Module {
   }
 
   object js extends TaiheiJSModule {
-    def artifactName = "taihei-lorem"
+    def artifactName = "taihei-mihon"
 
     def sources = Task.Sources(
       wsRoot / "shared" / "src",

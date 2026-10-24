@@ -1,11 +1,11 @@
-package dev.taihei.lorem
+package dev.taihei.mihon
 
 import java.security.SecureRandom
 import java.time.{LocalDate, ZoneId}
 import java.util.UUID
 
 import dev.taihei.i18n.Language
-import dev.taihei.lorem.sources.*
+import dev.taihei.mihon.sources.*
 
 /**
  * Fake data for tests, seed data and mock-ups: filler text, people, contact details, addresses,
@@ -16,7 +16,7 @@ import dev.taihei.lorem.sources.*
  * [[yesterday]] and [[tomorrow]], which follow the UTC calendar date.
  *
  * {{{
- * import dev.taihei.lorem.LoremIpsum
+ * import dev.taihei.mihon.LoremIpsum
  *
  * LoremIpsum.name  // "Olivia Hernandez"
  * LoremIpsum.email // "olivia.hernandez@brightwavehub.example"

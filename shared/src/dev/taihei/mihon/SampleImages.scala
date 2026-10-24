@@ -1,4 +1,4 @@
-package dev.taihei.lorem
+package dev.taihei.mihon
 
 /** Two sample images for mock-ups and seed data, each a base64-encoded PNG without a `data:` prefix. */
 object SampleImages:

@@ -1,4 +1,4 @@
-package dev.taihei.lorem.sources
+package dev.taihei.mihon.sources
 
 import zio.json.*
 
@@ -12,9 +12,9 @@ import zio.json.*
 object ResourceLoader:
 
   private val supportedResources: Set[String] = Set(
-    "/dev/taihei/lorem/sources/female-names.json",
-    "/dev/taihei/lorem/sources/male-names.json",
-    "/dev/taihei/lorem/sources/surnames.json",
+    "/dev/taihei/mihon/sources/female-names.json",
+    "/dev/taihei/mihon/sources/male-names.json",
+    "/dev/taihei/mihon/sources/surnames.json",
   )
 
   // Embedded JSON data for Scala.js (browser cannot load from filesystem)
@@ -29,9 +29,9 @@ object ResourceLoader:
 
   def loadStringList(resourcePath: String): List[String] =
     val jsonString = resourcePath match
-      case "/dev/taihei/lorem/sources/female-names.json" => femaleNamesJson
-      case "/dev/taihei/lorem/sources/male-names.json"   => maleNamesJson
-      case "/dev/taihei/lorem/sources/surnames.json"     => surnamesJson
+      case "/dev/taihei/mihon/sources/female-names.json" => femaleNamesJson
+      case "/dev/taihei/mihon/sources/male-names.json"   => maleNamesJson
+      case "/dev/taihei/mihon/sources/surnames.json"     => surnamesJson
       case _                                             =>
         val supported = supportedResources.mkString(", ")
         throw new RuntimeException(

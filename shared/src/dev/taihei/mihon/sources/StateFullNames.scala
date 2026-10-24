@@ -1,9 +1,9 @@
-package dev.taihei.lorem.sources
+package dev.taihei.mihon.sources
 
 /**
- * Internal: a word list shipped with this library, not used by [[dev.taihei.lorem.LoremIpsum]]. Not part
+ * Internal: a word list shipped with this library, not used by [[dev.taihei.mihon.LoremIpsum]]. Not part
  * of the public API and not covered by the compatibility promise; it becomes private in the next major release.
- * Use [[dev.taihei.lorem.LoremIpsum]] instead.
+ * Use [[dev.taihei.mihon.LoremIpsum]] instead.
  */
 object StateFullNames extends SampleWordCollection:
 

@@ -1,4 +1,4 @@
-package dev.taihei.lorem
+package dev.taihei.mihon
 
 import java.time.LocalDate
 

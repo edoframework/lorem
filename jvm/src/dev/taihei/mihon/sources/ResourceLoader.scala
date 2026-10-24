@@ -1,4 +1,4 @@
-package dev.taihei.lorem.sources
+package dev.taihei.mihon.sources
 
 import scala.io.Source
 

@@ -2,7 +2,7 @@ SHELL = /bin/bash
 
 # Maven Central coordinates of one published artifact, used to see whether a version is already
 # released. Central is immutable: a version that is there cannot be published again.
-CENTRAL_PATH = dev/taihei/taihei-lorem_3
+CENTRAL_PATH = dev/taihei/taihei-mihon_3
 
 # The release credentials (MILL_SONATYPE_USERNAME / MILL_SONATYPE_PASSWORD for the Central Portal
 # user token, MILL_PGP_SECRET_BASE64 / MILL_PGP_PASSPHRASE for the release key). Read from this
@@ -47,7 +47,7 @@ prepare: fix fmt compile
 
 build: prepare test
 
-# __.test.testForked resolves to both lorem.jvm.test and lorem.js.test
+# __.test.testForked resolves to both mihon.jvm.test and mihon.js.test
 # (JS tests run under Node).
 test:
 	./mill __.test.testForked
