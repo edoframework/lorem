@@ -294,6 +294,7 @@ publishLocal:
 publish:
 	@set -eo pipefail; \
 	$(TAG_VERSION); \
+	if git ls-files --error-unmatch "$(EMBARGO_FILE)" >/dev/null 2>&1; then echo "[publish] refused: $(EMBARGO_FILE) is tracked"; exit 1; fi; \
 	if [ -L "$(EMBARGO_FILE)" ] || ! [ -f "$(EMBARGO_FILE)" ] || ! grep -qxF "$$VERSION" "$(EMBARGO_FILE)"; then \
 	  echo "[publish] refused: $$VERSION is not under embargo. A release goes to GitHub Packages with release-finalize,"; \
 	  echo "          and to Maven Central with the release train, as the same signed files."; exit 1; fi; \
@@ -709,6 +710,8 @@ release-finalize:
 	$(STATE_GUARD); \
 	NEW=$$(python3 -I -c 'import json, sys; print(json.load(open(sys.argv[1]))["newVersion"])' "$(RELEASE_STATE)"); \
 	PREPARED=$$(python3 -I -c 'import json, sys; print(json.load(open(sys.argv[1])).get("head", ""))' "$(RELEASE_STATE)"); \
+	EMBARGOED=$$(python3 -I -c 'import json, sys; e = json.load(open(sys.argv[1])).get("embargo"); print({True: "yes", False: "no"}[e]) if isinstance(e, bool) else sys.exit(1)' "$(RELEASE_STATE)") || { \
+		echo "[ERROR] the release state does not say embargo true or false (prepared before this machinery?): make release-abort, then release-prepare again"; exit 1; }; \
 	if [ "$$PREPARED" != "$$(git rev-parse HEAD)" ]; then \
 		echo "[ERROR] HEAD is not the commit release-prepare validated ($${PREPARED:-none recorded}): make release-abort, then release-prepare again"; exit 1; \
 	fi; \
@@ -745,8 +748,6 @@ release-finalize:
 	git tag -a "v$$NEW" -m "Release $$NEW"; \
 	echo "[OK] Created local tag v$$NEW (not pushed)"; \
 	$(MAKE) release-preflight; \
-	EMBARGOED=$$(python3 -I -c 'import json, sys; e = json.load(open(sys.argv[1])).get("embargo"); print({True: "yes", False: "no"}[e]) if isinstance(e, bool) else sys.exit(1)' "$(RELEASE_STATE)") || { \
-		echo "[ERROR] the release state does not say embargo true or false (prepared before this machinery?): make release-abort, then release-prepare again"; exit 1; }; \
 	if [ "$$EMBARGOED" = yes ]; then \
 		$(MAKE) publish; \
 		rm -f $(RELEASE_STATE); \

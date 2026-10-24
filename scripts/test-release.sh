@@ -161,7 +161,8 @@ for _ in $(seq 50); do curl -s --cacert "$W/cert.pem" -o /dev/null "https://loca
   printf "taihei.host=maven.pkg.github.com\ntaihei.username=test-user\ntaihei.password=ghp_testreadtoken\ntaihei.https-only=true\n" > "$W/credentials.properties" )
 export CURL_CA_BUNDLE="$W/cert.pem"
 M=(make -C "$G" --no-print-directory "GITHUB_PACKAGES_URL=https://localhost:$PA/taiheiframework/test"
-   "PUBLISH_ENV=$W/publish.env" "READ_CREDENTIALS=$W/credentials.properties" "RELEASE_KEY=$KEY")
+   "PUBLISH_ENV=$W/publish.env" "READ_CREDENTIALS=$W/credentials.properties" "RELEASE_KEY=$KEY"
+   "RELEASE_ENV=$W/no-release-env")
 
 # The signatures, checked by publish-github before the first upload (as by release-bundle).
 use_bundle() { rm -rf "$B"; R bundle --source "$1" --dest "$B" --group $GROUP --version $V --artifacts "$ARTIFACTS" --name "$PREFIX-$V" >/dev/null; }
