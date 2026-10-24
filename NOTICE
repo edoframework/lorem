@@ -27,3 +27,34 @@ published under.
 
 The text generator uses the "Lorem ipsum" passage, derived from Cicero's
 De finibus bonorum et malorum (45 BC), which is in the public domain.
+
+Third-party data
+
+The sample data under dev/taihei/mihon/data/ was derived from the sources
+below by the scripts in scripts/data/. docs/data-sources.md records the
+versions, download dates and processing of each.
+
+Unicode CLDR 47 (country names, region names, quotation marks, likely
+subtags) and the Unicode Han Database, Unihan (Mandarin readings).
+Copyright (c) 2004-2025 Unicode, Inc. Distributed under the Unicode
+License v3; the full text is in LICENSE-UNICODE.
+
+Word frequencies derived from sentences of the Tatoeba Project
+(https://tatoeba.org), written by the Tatoeba contributors and licensed
+under CC BY 2.0 FR (https://creativecommons.org/licenses/by/2.0/fr/).
+Only single words, filtered, with weights computed from their counts are
+included. No sentence is reproduced.
+
+Address formats and postal code patterns are written for this library,
+based on the address metadata of Google libaddressinput
+(https://github.com/google/libaddressinput), licensed under CC BY 4.0
+(https://creativecommons.org/licenses/by/4.0/). They were adapted and
+changed.
+
+Given names, family names, cities, region names and Latin country names
+from Wikidata (https://www.wikidata.org), dedicated to the public domain
+under CC0 1.0.
+
+United States given names (1990) and surnames (2010) from the U.S. Census
+Bureau, a work of the United States Government not protected by copyright
+in the United States (17 U.S.C. 105).

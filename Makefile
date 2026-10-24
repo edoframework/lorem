@@ -182,7 +182,7 @@ CENTRAL_GUARD = CODE=$$(curl -q -s --proto '=https' --max-time 30 -o /dev/null -
 GITHUB_STATUS = { printf 'user = "%s:%s"\n' "$$RUSER" "$$RTOKEN" | \
 	curl -q -K - -s --proto '=https' --max-time 60 -o /dev/null -w '%{http_code}' "$$URL" || true; }
 
-.PHONY: clean fix fmt compile prepare build test mima repo-guard release-test validate deps publishLocal publish \
+.PHONY: clean fix fmt compile prepare build test mima budget repo-guard release-test validate deps publishLocal publish \
         publish-dry-run release-bundle publish-github verify-github release-github \
         release-preflight release-prepare release-finalize release-abort release-status embargo-lift
 
@@ -259,7 +259,12 @@ repo-guard:
 release-test:
 	@bash scripts/test-release.sh
 
-validate: repo-guard release-test fix fmt compile test mima
+# The size budget (TAIHEI-40): data per language and in all, the JVM jar and the full-linked
+# Scala.js of a fixture that uses every language. Over budget fails.
+budget:
+	./mill mihon.budget
+
+validate: repo-guard release-test fix fmt compile test mima budget
 
 deps:
 	./mill mill.scalalib.Dependency/showUpdates

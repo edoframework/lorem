@@ -1,0 +1,71 @@
+"""Cities and regions from Wikidata (CC0): the largest cities of a country by population, with
+their names in the language and, where the address format names one, their first-level region.
+Weights are populations in thousands."""
+
+from common import sparql
+
+# The class of a country's first-level subdivisions, for the formats that name a region.
+REGION_CLASS = {"US": "Q35657", "BR": "Q485258", "IN": "Q131541"}
+
+
+def _largest(country, qid, threshold):
+    # The population filter first, then the class: the other way round times out.
+    return sparql(f"cities-{country}-{threshold}", f"""
+        SELECT ?item (MAX(?p) AS ?pop) WHERE {{
+          {{ SELECT ?item ?p WHERE {{ ?item wdt:P17 wd:{qid}; wdt:P1082 ?p . FILTER(?p > {threshold}) }} }}
+          # A settlement by at least one class that is not an urban or metropolitan area, of
+          # which Wikidata holds many with populations larger than any city's.
+          FILTER EXISTS {{ ?item wdt:P31 ?c . ?c wdt:P279* wd:Q486972 .
+                           FILTER NOT EXISTS {{ ?c wdt:P279* wd:Q702492 }}
+                           FILTER NOT EXISTS {{ ?c wdt:P279* wd:Q1907114 }} }}
+          FILTER NOT EXISTS {{ ?item wdt:P576 ?end }}
+        }} GROUP BY ?item ORDER BY DESC(?pop) LIMIT 400""")
+
+
+def cities(country, qid, lang, ok, limit=100):
+    """[{name, weight, region?}], the `limit` largest cities whose label in `lang` passes `ok`."""
+    rows = []
+    for threshold in (100000, 20000, 5000):
+        rows = _largest(country, qid, threshold)
+        if len(rows) >= limit * 1.5:
+            break
+    pops = {r["item"]: int(float(r["pop"])) for r in rows}
+    values = " ".join("wd:" + i.rsplit("/", 1)[1] for i in pops)
+    region_class = REGION_CLASS.get(country)
+    region = ""
+    if region_class:
+        region = f"""OPTIONAL {{ ?item wdt:P131* ?r . ?r wdt:P31 wd:{region_class}; rdfs:label ?region .
+                                FILTER(LANG(?region) = "{lang}") }}"""
+    labels = sparql(f"city-labels-{country}-{lang}", f"""
+        SELECT ?item ?label {"?region" if region_class else ""} WHERE {{
+          VALUES ?item {{ {values} }}
+          ?item rdfs:label ?label . FILTER(LANG(?label) = "{lang}")
+          {region}
+        }}""")
+    by_item = {}
+    for r in sorted(labels, key=lambda r: (r["item"], r["label"], r.get("region", ""))):
+        by_item.setdefault(r["item"], r)
+    out, names = [], set()
+    for item in sorted(pops, key=lambda i: (-pops[i], i)):
+        r = by_item.get(item)
+        if not r or not ok(r["label"]) or r["label"] in names:
+            continue
+        if region_class and "region" not in r:
+            continue
+        city = {"name": r["label"], "weight": max(1, pops[item] // 1000)}
+        if region_class:
+            city["region"] = r["region"]
+        out.append(city)
+        names.add(r["label"])
+        if len(out) == limit:
+            break
+    return out
+
+
+def regions(cities_):
+    """[[region, weight]] of the regions the cities lie in, by their population."""
+    totals = {}
+    for c in cities_:
+        if "region" in c:
+            totals[c["region"]] = totals.get(c["region"], 0) + c["weight"]
+    return [[r, w] for r, w in sorted(totals.items(), key=lambda kv: (-kv[1], kv[0]))]

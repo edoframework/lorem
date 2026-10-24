@@ -1,83 +1,93 @@
 package dev.taihei.mihon
 
 import java.time.*
-import java.util.UUID
 
 import zio.test.*
+
+import dev.taihei.tsuji.Language
 
 object SeededSpec extends ZIOSpecDefault:
 
   private val noon  = Instant.parse("2026-10-24T12:00:00Z")
   private val clock = Clock.fixed(noon, ZoneOffset.UTC)
 
-  // A run of draws, so a test compares whole sequences and not one value.
-  private def run(lorem: LoremIpsum): List[String] =
-    List(lorem.name, lorem.word, lorem.city, lorem.id, lorem.double(10.0).toString, lorem.futureDate.toString)
+  // A run of draws in one language, so a test compares whole sequences and not one value.
+  private def run(mihon: Mihon): List[String] =
+    val p = mihon.person
+    List(
+      mihon.sentence,
+      p.fullName,
+      p.latin,
+      p.reading.getOrElse("-"),
+      mihon.email,
+      mihon.address.singleLine,
+      mihon.phone,
+      mihon.title,
+      mihon.word,
+    )
+
+  // The values of seed 42 in each language in this version. They are the same on the JVM and on
+  // Scala.js, which this test proves by running on both. A change to the data or to how a
+  // generator draws changes them: update them in that change, and say so in the release notes.
+  private val golden: Map[String, List[String]] = Map(
+    "en" -> List(
+      "Call known her buy than natural look or won meeting yesterday thing?",
+      "Virginia Wood",
+      "Virginia Wood",
+      "-",
+      "charles.white@lunarbytefusion.example",
+      "180 Cedar Lane, Queens, New York 77233, United States",
+      "+1 537 555-0154",
+      "Books Want Advice",
+      "bigger",
+    ),
+    "la" -> List(
+      "Quas rutrum ferri amet eloquentiam sanctus lorem mollis referrentur habitasse graecis alterum?",
+      "Publia Sulpicia",
+      "Publia Sulpicia",
+      "-",
+      "gnaeus.tullius@lunarbytefusion.example",
+      "Clivus Pompeia 13, 00120 Civitas Vaticana, Civitas Vaticana",
+      "+39 06 69833495",
+      "Suavitate vituperata noluisse efficiantur",
+      "inceptos",
+    ),
+  )
 
   def spec = suite("SeededSpec")(
-    // The values of seed 42 in this version. They are the same on the JVM and on Scala.js, which
-    // this test proves by running on both. A change to a word list or to how a generator draws
-    // changes them: update them in that change, and say so in the release notes.
-    test("seed 42 and a fixed clock give these values, on every platform") {
-      val lorem = LoremIpsum.seeded(42L, clock)
-      assertTrue(
-        lorem.name == "Teddy Lyons",
-        lorem.word == "quas",
-        lorem.city == "Wien",
-        lorem.id == "f12bbb4b_46ee_4d83_b52c_856caa616abe",
-        lorem.double(10.0) == 0.9132461105841794,
-        lorem.futureDate == LocalDate.of(2036, 6, 14),
-        lorem.pastDate == LocalDate.of(2021, 7, 3),
-        lorem.email == "delia.gates@quantumcloudhub.example",
-      )
+    test("every language has its golden run") {
+      assertTrue(golden.keySet == Mihon.languages.map(_.tag).toSet)
     },
-    test("the same seed gives the same values") {
-      assertTrue(run(LoremIpsum.seeded(7L, clock)) == run(LoremIpsum.seeded(7L, clock)))
+    suite("seed 42 gives these values, on every platform")(
+      golden.toSeq.sortBy(_._1).map((tag, values) =>
+        test(tag)(assertTrue(run(Mihon.seeded(42L, Language(tag), clock)) == values))
+      )*
+    ),
+    test("the same seed and language give the same values") {
+      assertTrue(run(Mihon.seeded(7L, Language("la"))) == run(Mihon.seeded(7L, Language("la"))))
     },
     test("another seed gives other values") {
-      assertTrue(run(LoremIpsum.seeded(7L, clock)) != run(LoremIpsum.seeded(8L, clock)))
+      assertTrue(run(Mihon.seeded(7L)) != run(Mihon.seeded(8L)))
     },
     test("secure generators do not repeat each other") {
-      assertTrue(run(LoremIpsum.secure(clock)) != run(LoremIpsum.secure(clock)))
+      assertTrue(run(Mihon.secure()) != run(Mihon.secure()))
     },
-    test("today is the clock's date in the clock's time zone") {
-      // 23:30 UTC is already the next day two hours east.
-      val late = Instant.parse("2026-10-24T23:30:00Z")
-      val utc  = LoremIpsum.seeded(1L, Clock.fixed(late, ZoneOffset.UTC))
-      val east = LoremIpsum.secure(Clock.fixed(late, ZoneId.of("+02:00")))
+    test("withLanguage shares the generator: the views draw one sequence between them") {
+      val one   = Mihon.seeded(5L, clock = clock)
+      val other = one.withLanguage(Language("la"))
+      val mixed = List(one.int(1000), other.int(1000), one.int(1000))
+      val plain = Mihon.seeded(5L, clock = clock)
       assertTrue(
-        utc.today == LocalDate.of(2026, 10, 24),
-        utc.yesterday == LocalDate.of(2026, 10, 23),
-        utc.tomorrow == LocalDate.of(2026, 10, 25),
-        east.today == LocalDate.of(2026, 10, 25),
+        other.language == Language("la"),
+        one.language == Language.English,
+        other.today == one.today,
+        mixed == List(plain.int(1000), plain.int(1000), plain.int(1000)),
       )
     },
-    test("future and past dates are one to a thousand weeks from the clock's today") {
-      val lorem = LoremIpsum.seeded(3L, clock)
-      val today = LocalDate.of(2026, 10, 24)
-      val weeks = (1 to 500).flatMap { _ =>
-        Seq(
-          java.time.temporal.ChronoUnit.WEEKS.between(today, lorem.futureDate),
-          java.time.temporal.ChronoUnit.WEEKS.between(lorem.pastDate, today),
-        )
-      }
-      assertTrue(weeks.nonEmpty, weeks.forall(w => w >= 1 && w <= 1000))
-    },
-    test("id is a version-4 UUID of the IETF variant, with _ for -") {
-      val lorem = LoremIpsum.seeded(5L, clock)
-      val uuids = (1 to 200).map(_ => UUID.fromString(lorem.id.replace("_", "-")))
-      assertTrue(uuids.nonEmpty, uuids.forall(u => u.version == 4 && u.variant == 2), uuids.toSet.size == 200)
-    },
-    test("double stays below its bound and refuses one that is not positive and finite") {
-      val lorem                  = LoremIpsum.seeded(9L, clock)
-      def refused(bound: Double) = scala.util.Try(lorem.double(bound)).isFailure
-      assertTrue(
-        (1 to 1000).map(_ => lorem.double(0.5)).forall(d => d >= 0.0 && d < 0.5),
-        refused(0.0),
-        refused(-1.0),
-        refused(Double.NaN),
-        refused(Double.PositiveInfinity),
-      )
+    test("a seeded run does not depend on which language the generator started in") {
+      val a = Mihon.seeded(9L).withLanguage(Language("la"))
+      val b = Mihon.seeded(9L, Language("la"))
+      assertTrue(run(a) == run(b))
     },
   )
 

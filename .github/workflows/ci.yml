@@ -98,3 +98,8 @@ jobs:
       # Against the newest v-tag (fetch-depth 0 brings the tags), as make validate does.
       - name: Check binary compatibility (MiMa)
         run: make mima
+
+      # The language data, the JVM jar and the full-linked Scala.js of a fixture that uses every
+      # language stay within their budget.
+      - name: Size budget
+        run: make budget

@@ -230,45 +230,348 @@ trait TaiheiJSModule extends ScalaJSModule with ScalafmtModule with ScalafixModu
 }
 
 // ---------------------------------------------------------------------------
-// The name lists for Scala.js: every file in the folder must be a non-empty JSON array of
-// strings, or the build fails. Each list is written back as normalised JSON inside a Scala string
-// literal escaped by ujson, ASCII only, so nothing in a file can end the literal or reach the
-// generated code. Files are sorted by name, so the output is the same on every machine.
+// The language data (shared/resources/dev/taihei/mihon/data/). The build checks every file
+// against the schema the library decodes (Files.scala), so a malformed file fails the build on
+// both platforms and the library's own decoding cannot fail at run time. For Scala.js, which
+// has no classpath, it then writes each file into a generated Scala source.
 // ---------------------------------------------------------------------------
-object EmbeddedLists {
-  def write(folder: os.Path, classpathPrefix: String, dest: os.Path): PathRef = {
-    // A symlink would bring in whatever it points at, outside the repository included.
-    if (os.isLink(folder) || !os.isDir(folder, followLinks = false)) sys.error(s"$folder: not a folder")
-    val files = os.list(folder).sortBy(_.last)
-    val lists = files.map { file =>
-      if (os.isLink(file) || !os.isFile(file, followLinks = false) || file.ext != "json")
-        sys.error(s"$file: only JSON name lists belong in $folder")
-      val words = ujson.read(os.read(file)) match {
-        case ujson.Arr(items) if items.nonEmpty =>
-          items.map {
-            case ujson.Str(word) if word.nonEmpty => word
-            case other                            => sys.error(s"$file: not a non-empty string: $other")
-          }.toSeq
-        case _ => sys.error(s"$file: not a non-empty JSON array of strings")
+object EmbeddedData {
+  // The size budget (TAIHEI-40): data per language, all data, the JVM jar, and the full-linked
+  // Scala.js of a fixture that uses every language.
+  val maxLanguageBytes = 80 * 1024
+  val maxDataBytes     = 2560 * 1024
+  val maxJarBytes      = 1200 * 1024
+  val maxJsBytes       = 6 * 1024 * 1024
+
+  private val maxWords = 2000
+
+  private def fail(file: os.Path, msg: String): Nothing = sys.error(s"$file: $msg")
+
+  // A file that is a regular file and not a link: a link would bring in whatever it points at,
+  // outside the repository included.
+  private def regular(file: os.Path): Unit =
+    if (os.isLink(file) || !os.isFile(file, followLinks = false)) fail(file, "not a regular file")
+
+  private def folder(dir: os.Path): Unit =
+    if (os.isLink(dir) || !os.isDir(dir, followLinks = false)) fail(dir, "not a folder")
+
+  private def obj(file: os.Path, v: ujson.Value, where: String, required: Set[String], optional: Set[String] = Set()) = v match {
+    case ujson.Obj(fields) =>
+      val keys = fields.keySet.toSet
+      val missing = required -- keys
+      val unknown = keys -- required -- optional
+      if (missing.nonEmpty) fail(file, s"$where: missing ${missing.toSeq.sorted.mkString(", ")}")
+      if (unknown.nonEmpty) fail(file, s"$where: unknown ${unknown.toSeq.sorted.mkString(", ")}")
+      fields
+    case _ => fail(file, s"$where: not an object")
+  }
+
+  private def str(file: os.Path, v: ujson.Value, where: String, nonEmpty: Boolean = false): String = v match {
+    case ujson.Str(s) if !nonEmpty || s.nonEmpty =>
+      // No control characters, no unpaired surrogates and no byte order marks in the data.
+      if (s.exists(c => c < ' ' || c == '\u007f' || c == '﻿')) fail(file, s"$where: a control character")
+      s.indices.foreach { i =>
+        val c = s(i)
+        if (Character.isHighSurrogate(c) && (i + 1 >= s.length || !Character.isLowSurrogate(s(i + 1))))
+          fail(file, s"$where: an unpaired surrogate")
+        if (Character.isLowSurrogate(c) && (i == 0 || !Character.isHighSurrogate(s(i - 1))))
+          fail(file, s"$where: an unpaired surrogate")
       }
-      val json = ujson.write(ujson.Arr(words.map(ujson.Str(_))*))
-      s"$classpathPrefix/${file.last}" -> ujson.write(ujson.Str(json), escapeUnicode = true)
+      s
+    case _ => fail(file, s"$where: not a${if (nonEmpty) " non-empty" else ""} string")
+  }
+
+  private def bool(file: os.Path, v: ujson.Value, where: String): Boolean = v match {
+    case ujson.Bool(b) => b
+    case _             => fail(file, s"$where: not a boolean")
+  }
+
+  private def int(file: os.Path, v: ujson.Value, where: String, min: Int, max: Int): Int = v match {
+    case ujson.Num(n) if n == math.floor(n) && n >= min && n <= max => n.toInt
+    case _                                                           => fail(file, s"$where: not an integer in [$min, $max]")
+  }
+
+  private def arr(file: os.Path, v: ujson.Value, where: String, nonEmpty: Boolean = true, max: Int = 100000) = v match {
+    case ujson.Arr(items) if (!nonEmpty || items.nonEmpty) && items.size <= max => items.toSeq
+    case _ => fail(file, s"$where: not a${if (nonEmpty) " non-empty" else "n"} array of at most $max")
+  }
+
+  private def pair(file: os.Path, v: ujson.Value, where: String): (ujson.Value, ujson.Value) = arr(file, v, where) match {
+    case Seq(a, b) => (a, b)
+    case _         => fail(file, s"$where: not a pair")
+  }
+
+  private def ascii(s: String) = s.forall(c => c >= ' ' && c <= '~')
+
+  // Weighted [value, weight] pairs whose weights add up to at most Int.MaxValue.
+  private def weighted(file: os.Path, v: ujson.Value, where: String, max: Int = 100000, nonEmpty: Boolean = true): Seq[String] = {
+    var total = 0L
+    val values = arr(file, v, where, nonEmpty = nonEmpty, max = max).zipWithIndex.map { case (item, i) =>
+      val (value, weight) = pair(file, item, s"$where[$i]")
+      total += int(file, weight, s"$where[$i] weight", 1, Int.MaxValue)
+      str(file, value, s"$where[$i]", nonEmpty = true)
     }
-    if (lists.isEmpty) sys.error(s"$folder holds no name lists")
-    val entries = lists.map { case (path, literal) =>
-      s"    ${ujson.write(ujson.Str(path), escapeUnicode = true)} -> $literal,"
+    if (total > Int.MaxValue) fail(file, s"$where: the weights add up beyond ${Int.MaxValue}")
+    values
+  }
+
+  private def placeholders(s: String): Seq[String] = "\\{([^{}]*)\\}".r.findAllMatchIn(s).map(_.group(1)).toSeq
+
+  private def template(file: os.Path, v: ujson.Value, where: String, allowed: Set[String]): Unit = {
+    val s = str(file, v, where, nonEmpty = true)
+    if (s.count(_ == '{') != s.count(_ == '}')) fail(file, s"$where: unbalanced braces")
+    val unknown = placeholders(s).filterNot(allowed)
+    if (unknown.nonEmpty) fail(file, s"$where: unknown placeholders ${unknown.mkString(", ")}")
+  }
+
+  private val addressFields = Set("street", "city", "region", "postalCode", "country")
+  private val streetFields  = Set("family", "familyFemale", "given", "word", "Word", "number", "small")
+
+  final case class Entry(tag: String, script: String, country: String)
+
+  private def checkLanguages(file: os.Path): Seq[Entry] = {
+    val root = obj(file, ujson.read(os.read(file)), "languages.json", Set("languages", "aliases"))
+    val entries = arr(file, root("languages"), "languages").zipWithIndex.map { case (v, i) =>
+      val o = obj(file, v, s"languages[$i]", Set("tag", "script", "country"))
+      val tag = str(file, o("tag"), s"languages[$i].tag")
+      if (!tag.matches("[a-z]{2,3}(-[A-Z][a-z]{3})?")) fail(file, s"languages[$i].tag: not a language with an optional script: $tag")
+      val script = str(file, o("script"), s"languages[$i].script")
+      if (!script.matches("[A-Z][a-z]{3}")) fail(file, s"languages[$i].script: not a script subtag: $script")
+      val country = str(file, o("country"), s"languages[$i].country")
+      if (!country.matches("[A-Z]{2}")) fail(file, s"languages[$i].country: not an ISO 3166-1 alpha-2 code: $country")
+      Entry(tag, script, country)
+    }
+    val tags = entries.map(_.tag)
+    if (tags.distinct.size != tags.size) fail(file, "a language listed twice")
+    arr(file, root("aliases"), "aliases", nonEmpty = false).zipWithIndex.foreach { case (v, i) =>
+      val (a, t) = pair(file, v, s"aliases[$i]")
+      val alias  = str(file, a, s"aliases[$i]", nonEmpty = true)
+      if (!alias.matches("[a-z]{2,3}(-[A-Z][a-z]{3})?(-[A-Z]{2})?")) fail(file, s"aliases[$i]: not a tag: $alias")
+      if (!tags.contains(str(file, t, s"aliases[$i] target"))) fail(file, s"aliases[$i]: an alias of a language without data")
+    }
+    entries
+  }
+
+  private def checkText(file: os.Path, cased: Boolean => Unit): Unit = {
+    val strings = Seq("wordSeparator", "sentenceSeparator", "fullStop", "questionOpen", "questionMark",
+      "exclamationOpen", "exclamationMark", "comma", "quoteOpen", "quoteClose")
+    val o = obj(file, ujson.read(os.read(file)), "text", strings.toSet ++ Set("cased", "titleCase", "capitals", "wordsPerSentence", "words"))
+    strings.foreach(k => str(file, o(k), k))
+    cased(bool(file, o("cased"), "cased"))
+    bool(file, o("titleCase"), "titleCase")
+    arr(file, o("capitals"), "capitals", nonEmpty = false).zipWithIndex.foreach { case (v, i) =>
+      val (k, c) = pair(file, v, s"capitals[$i]")
+      val key = str(file, k, s"capitals[$i]", nonEmpty = true)
+      if (key.codePointCount(0, key.length) > 2) fail(file, s"capitals[$i]: more than two letters")
+      str(file, c, s"capitals[$i] capital", nonEmpty = true)
+    }
+    val (lo, hi) = pair(file, o("wordsPerSentence"), "wordsPerSentence")
+    val min = int(file, lo, "wordsPerSentence min", 1, 50)
+    int(file, hi, "wordsPerSentence max", min, 50)
+    weighted(file, o("words"), "words", max = maxWords)
+  }
+
+  private def checkForm(file: os.Path, o: collection.Map[String, ujson.Value], where: String, latinScript: Boolean): Unit = {
+    val name    = str(file, o("name"), s"$where.name", nonEmpty = true)
+    val latin   = o.get("latin").map(str(file, _, s"$where.latin", nonEmpty = true))
+    val asciiF  = o.get("ascii").map(str(file, _, s"$where.ascii", nonEmpty = true))
+    o.get("reading").foreach(str(file, _, s"$where.reading", nonEmpty = true))
+    if (!latinScript && latin.isEmpty) fail(file, s"$where: a name in another script than Latin needs its latin form")
+    val effective = asciiF.orElse(latin).getOrElse(name)
+    if (!ascii(effective)) fail(file, s"$where: no ASCII form (ascii) for $effective")
+  }
+
+  private def checkNames(file: os.Path, latinScript: Boolean): Unit = {
+    val o = obj(file, ujson.read(os.read(file)), "names", Set("order", "separator", "female", "male", "family"))
+    str(file, o("order"), "order") match {
+      case "given-family" | "family-given" =>
+      case other                           => fail(file, s"order: $other")
+    }
+    str(file, o("separator"), "separator")
+    val formKeys = Set("latin", "ascii", "reading")
+    Seq("female", "male").foreach { list =>
+      var total = 0L
+      arr(file, o(list), list).zipWithIndex.foreach { case (v, i) =>
+        val e = obj(file, v, s"$list[$i]", Set("name", "weight"), formKeys)
+        checkForm(file, e, s"$list[$i]", latinScript)
+        total += int(file, e("weight"), s"$list[$i].weight", 1, Int.MaxValue)
+      }
+      if (total > Int.MaxValue) fail(file, s"$list: the weights add up beyond ${Int.MaxValue}")
+    }
+    var total = 0L
+    arr(file, o("family"), "family").zipWithIndex.foreach { case (v, i) =>
+      val e = obj(file, v, s"family[$i]", Set("name", "weight"), formKeys + "female")
+      checkForm(file, e, s"family[$i]", latinScript)
+      total += int(file, e("weight"), s"family[$i].weight", 1, Int.MaxValue)
+      e.get("female").foreach(f => checkForm(file, obj(file, f, s"family[$i].female", Set("name"), formKeys), s"family[$i].female", latinScript))
+    }
+    if (total > Int.MaxValue) fail(file, s"family: the weights add up beyond ${Int.MaxValue}")
+  }
+
+  private def checkCountries(file: os.Path, own: String): Unit = {
+    val codes = arr(file, ujson.read(os.read(file)), "countries").zipWithIndex.map { case (v, i) =>
+      val (c, n) = pair(file, v, s"countries[$i]")
+      val code   = str(file, c, s"countries[$i]")
+      if (!code.matches("[A-Z]{2}")) fail(file, s"countries[$i]: not an ISO 3166-1 alpha-2 code: $code")
+      str(file, n, s"countries[$i] name", nonEmpty = true)
+      code
+    }
+    if (codes != codes.sorted.distinct) fail(file, "countries: not sorted by code, or a code listed twice")
+    if (!codes.contains(own)) fail(file, s"countries: no name for the language's own country $own")
+  }
+
+  private def checkCountry(file: os.Path, code: String): Unit = {
+    val o = obj(file, ujson.read(os.read(file)), "country",
+      Set("code", "lines", "separator", "postalCode", "regions", "cities", "streets", "phone", "fictionalPhone"))
+    if (str(file, o("code"), "code") != code) fail(file, s"code: not $code")
+    arr(file, o("lines"), "lines").zipWithIndex.foreach { case (v, i) => template(file, v, s"lines[$i]", addressFields) }
+    str(file, o("separator"), "separator")
+    if (!ascii(str(file, o("postalCode"), "postalCode"))) fail(file, "postalCode: not ASCII")
+    val regions = weighted(file, o("regions"), "regions", nonEmpty = false).toSet
+    arr(file, o("cities"), "cities").zipWithIndex.foreach { case (v, i) =>
+      val c = obj(file, v, s"cities[$i]", Set("name", "weight"), Set("region"))
+      str(file, c("name"), s"cities[$i].name", nonEmpty = true)
+      int(file, c("weight"), s"cities[$i].weight", 1, Int.MaxValue)
+      c.get("region").foreach(r => if (!regions(str(file, r, s"cities[$i].region"))) fail(file, s"cities[$i].region: not one of regions"))
+    }
+    arr(file, o("streets"), "streets").zipWithIndex.foreach { case (v, i) => template(file, v, s"streets[$i]", streetFields) }
+    val phone = str(file, o("phone"), "phone")
+    if (!phone.matches("\\+[0-9]{1,3} [0-9#N ()-]+")) fail(file, s"phone: not +<calling code> and a national pattern: $phone")
+    bool(file, o("fictionalPhone"), "fictionalPhone")
+  }
+
+  /**
+   * Checks the whole data folder: languages.json and, for each language listed there, exactly
+   * text.json, names.json, countries.json and country-<CC>.json; nothing else, no links, each file
+   * in its schema. `resources` is the module's resource root, which must hold the data folder and
+   * nothing else.
+   */
+  def check(resources: os.Path): Seq[os.Path] = {
+    folder(resources)
+    val data = resources / "dev" / "taihei" / "mihon" / "data"
+    // Everything in the resource root is published in the JVM jar: only the data belongs there.
+    os.walk(resources, followLinks = false).foreach { p =>
+      if (!(p.startsWith(data) || data.startsWith(p))) fail(p, "only dev/taihei/mihon/data/ belongs in shared/resources")
+    }
+    folder(data)
+    val languagesFile = data / "languages.json"
+    regular(languagesFile)
+    val entries  = checkLanguages(languagesFile)
+    val expected = entries.flatMap { e =>
+      val dir = data / os.SubPath(e.tag)
+      Seq(dir / "text.json", dir / "names.json", dir / "countries.json", dir / s"country-${e.country}.json")
+    }.toSet + languagesFile
+    val present = os.walk(data, followLinks = false).filterNot(p => os.isDir(p, followLinks = false)).toSet
+    (present -- expected).toSeq.sorted.foreach(p => fail(p, "not a data file of a listed language"))
+    (expected -- present).toSeq.sorted.foreach(p => fail(p, "missing"))
+    os.walk(data, followLinks = false).foreach { p =>
+      if (os.isLink(p)) fail(p, "a link")
+      if (os.isDir(p, followLinks = false) && p != data && !entries.exists(e => p == data / os.SubPath(e.tag)))
+        fail(p, "not the folder of a listed language")
+    }
+    entries.foreach { e =>
+      val dir = data / os.SubPath(e.tag)
+      folder(dir)
+      expected.filter(_.startsWith(dir)).foreach(regular)
+      var cased = false
+      checkText(dir / "text.json", c => cased = c)
+      checkNames(dir / "names.json", e.script == "Latn")
+      checkCountries(dir / "countries.json", e.country)
+      checkCountry(dir / s"country-${e.country}.json", e.country)
+      val bytes = os.walk(dir).filter(os.isFile(_)).map(os.size).sum
+      if (bytes > maxLanguageBytes) fail(dir, s"$bytes bytes of data, more than the budget of $maxLanguageBytes")
+    }
+    val total = expected.toSeq.map(os.size).sum
+    if (total > maxDataBytes) fail(data, s"$total bytes of data, more than the budget of $maxDataBytes")
+    expected.toSeq.sorted
+  }
+
+  // A Scala string literal of `s`, ASCII only (ujson escapes the rest as \uXXXX), so nothing in a
+  // data file can end the literal or reach the generated code.
+  private def literal(s: String) = ujson.write(ujson.Str(s), escapeUnicode = true)
+
+  // At most this many characters per literal: escaped as \uXXXX at worst, 60 000 bytes, below the
+  // 65 535-byte limit the JVM class file sets on a constant, whatever a backend does with it.
+  private val chunkChars = 10000
+
+  private def chunks(s: String): Seq[String] = {
+    val out = Seq.newBuilder[String]
+    var i   = 0
+    while (i < s.length) {
+      var end = math.min(i + chunkChars, s.length)
+      // Never between the two halves of a surrogate pair.
+      if (end < s.length && Character.isHighSurrogate(s(end - 1))) end -= 1
+      out += s.substring(i, end)
+      i = end
+    }
+    out.result()
+  }
+
+  /** The Scala.js source with every data file, checked and unchanged, in path order. */
+  def write(resources: os.Path, dest: os.Path): PathRef = {
+    val files = check(resources)
+    val defs  = files.zipWithIndex.map { case (file, i) =>
+      // The file as it is, so the tests can compare it with the one on disk (DataManifest).
+      val json  = os.read(file)
+      val parts = chunks(json).map(c => s"      ${literal(c)},").mkString("\n")
+      s"""  private def file$i: String =
+         |    Seq(
+         |$parts
+         |    ).mkString""".stripMargin
+    }
+    val entries = files.zipWithIndex.map { case (file, i) =>
+      s"    ${literal("/" + file.relativeTo(resources).toString)} -> (() => file$i),"
     }
     val source =
       s"""|// Generated by build.mill from shared/resources: do not edit.
           |package dev.taihei.mihon.sources
           |
-          |// The JSON name lists by classpath path, for the Scala.js ResourceLoader.
-          |private[mihon] object EmbeddedLists:
-          |  val byPath: Map[String, String] = Map(
+          |// The data files by classpath path, for the Scala.js ResourceLoader.
+          |private[mihon] object EmbeddedData:
+          |  private val files: Map[String, () => String] = Map(
+          |${entries.mkString("\n")}
+          |  )
+          |
+          |  def get(path: String): Option[String] = files.get(path).map(_())
+          |
+          |${defs.mkString("\n\n")}
+          |""".stripMargin
+    os.write.over(dest / "EmbeddedData.scala", source, createFolders = true)
+    PathRef(dest)
+  }
+
+  /**
+   * The manifest the tests compare the loaded data with, on both platforms: each file's path,
+   * length in UTF-16 units and String.hashCode (specified, so the same on the JVM and in
+   * JavaScript), computed here from the files on disk.
+   */
+  def manifest(resources: os.Path, dest: os.Path): PathRef = {
+    val files   = check(resources)
+    val entries = files.map { file =>
+      val text = os.read(file)
+      s"    ${literal("/" + file.relativeTo(resources).toString)} -> (${text.length}, ${text.hashCode}),"
+    }
+    val source =
+      s"""|// Generated by build.mill from shared/resources: do not edit.
+          |package dev.taihei.mihon
+          |
+          |// Every data file on disk: path -> (length, String.hashCode).
+          |object DataManifest:
+          |  val files: Map[String, (Int, Int)] = Map(
           |${entries.mkString("\n")}
           |  )
           |""".stripMargin
-    os.write.over(dest / "EmbeddedLists.scala", source, createFolders = true)
+    os.write.over(dest / "DataManifest.scala", source, createFolders = true)
+    PathRef(dest)
+  }
+
+  // LICENSE, NOTICE and the Unicode licence of the CLDR and Unihan data in META-INF/ of every
+  // published jar: the data ships in the jars, and its licences ask that their notices go with it.
+  def metaInf(files: Seq[os.Path], dest: os.Path): PathRef = {
+    files.foreach { f =>
+      regular(f)
+      os.copy.over(f, dest / "META-INF" / f.last, createFolders = true)
+    }
     PathRef(dest)
   }
 }
@@ -281,10 +584,30 @@ val wsRoot = os.Path(sys.env("MILL_WORKSPACE_ROOT"))
 // ---------------------------------------------------------------------------
 // Module: mihon (cross-platform JVM + JS)
 //   shared sources compile on both platforms; jvm/ and js/ hold the
-//   platform-specific resource loaders (the JVM reads the name lists from the
-//   classpath; JS embeds them). Depends on taihei-tsuji for Language.
+//   platform-specific resource loaders (the JVM reads the data from the
+//   classpath; JS embeds it). Depends on taihei-tsuji for Language.
 // ---------------------------------------------------------------------------
 object mihon extends Module {
+  // The one copy of the language data, which the JVM reads from the classpath and the build
+  // compiles into the Scala.js module.
+  def sharedResources = Task.Source(wsRoot / "shared" / "resources")
+
+  // Checked once for both platforms: a file outside the schema fails the build.
+  def dataFiles = Task {
+    EmbeddedData.check(sharedResources().path).map(PathRef(_))
+  }
+
+  def licenceFiles = Task.Sources(wsRoot / "LICENSE", wsRoot / "NOTICE", wsRoot / "LICENSE-UNICODE")
+
+  def metaInf = Task {
+    EmbeddedData.metaInf(licenceFiles().map(_.path), Task.dest)
+  }
+
+  // The data manifest the shared tests compare the loaded files with, on both platforms.
+  def dataManifest = Task {
+    EmbeddedData.manifest(sharedResources().path, Task.dest)
+  }
+
   object jvm extends TaiheiModule {
     def artifactName = "taihei-mihon"
 
@@ -292,10 +615,12 @@ object mihon extends Module {
       wsRoot / "shared" / "src",
       wsRoot / "jvm" / "src",
     )
-    // The name lists, read from the classpath.
-    def resources = Task.Sources(
-      wsRoot / "shared" / "resources",
-    )
+    // The language data, read from the classpath, once the build has checked it, and the
+    // licences in META-INF/.
+    def resources = Task {
+      dataFiles()
+      Seq(sharedResources(), metaInf())
+    }
 
     def mvnDeps = Seq(
       mvn"dev.zio::zio-json:${V.zioJson}",
@@ -306,6 +631,7 @@ object mihon extends Module {
       def sources = Task.Sources(
         wsRoot / "shared" / "test" / "src",
       )
+      def generatedSources = Task(Seq(dataManifest()))
     }
   }
 
@@ -316,25 +642,53 @@ object mihon extends Module {
       wsRoot / "shared" / "src",
       wsRoot / "js" / "src",
     )
+    // Only the licences: the data is compiled in.
+    def resources    = Task(Seq(metaInf()))
 
     def mvnDeps = Seq(
       mvn"dev.zio::zio-json::${V.zioJson}",
       mvn"dev.taihei::taihei-tsuji::${V.taiheiTsuji}",
     ) ++ jsDeps
 
-    // Scala.js has no classpath to read the name lists from, so they are compiled in. They are
-    // generated from shared/resources, the one copy the JVM reads too, so the platforms cannot
-    // drift apart (until 5.0.0 a hand-copied list on Scala.js did).
-    def nameLists = Task.Source(wsRoot / "shared" / "resources" / "dev" / "taihei" / "mihon" / "sources")
-
+    // Scala.js has no classpath to read the data from, so it is compiled in. It is generated from
+    // shared/resources, the one copy the JVM reads too, so the platforms cannot drift apart.
     def generatedSources = Task {
-      Seq(EmbeddedLists.write(nameLists().path, "/dev/taihei/mihon/sources", Task.dest))
+      Seq(EmbeddedData.write(sharedResources().path, Task.dest))
     }
 
     object test extends TaiheiJSTests {
       def sources = Task.Sources(
         wsRoot / "shared" / "test" / "src",
       )
+      def generatedSources = Task(Seq(dataManifest()))
     }
+  }
+
+  // A Scala.js program that uses every language, never published: its full-linked size is the
+  // budget's measure of what Mihon adds to a browser bundle.
+  object budgetFixture extends ScalaJSModule with ScalafmtModule {
+    def scalaVersion   = V.scala
+    def scalaJSVersion = V.scalaJS
+    def moduleDeps     = Seq(js)
+    def sources    = Task.Sources(wsRoot / "budget" / "src")
+    def mainClass  = Some("dev.taihei.mihon.budget.Main")
+  }
+
+  /** Fails when the data, the JVM jar or the full-linked fixture is over its budget. */
+  def budget = Task {
+    val files     = dataFiles()
+    val dataBytes = files.map(f => os.size(f.path)).sum
+    val jarBytes  = os.size(jvm.jar().path)
+    val linked    = budgetFixture.fullLinkJS().dest.path
+    val jsBytes   = os.walk(linked).filter(p => os.isFile(p) && p.ext == "js").map(os.size).sum
+    val report = Seq(
+      s"data ${dataBytes} bytes (budget ${EmbeddedData.maxDataBytes})",
+      s"JVM jar ${jarBytes} bytes (budget ${EmbeddedData.maxJarBytes})",
+      s"Scala.js fullLinkJS ${jsBytes} bytes (budget ${EmbeddedData.maxJsBytes})",
+    )
+    report.foreach(r => println(s"[budget] $r"))
+    if (jarBytes > EmbeddedData.maxJarBytes) sys.error(s"the JVM jar is over its budget: ${report(1)}")
+    if (jsBytes > EmbeddedData.maxJsBytes) sys.error(s"the full-linked Scala.js is over its budget: ${report(2)}")
+    report
   }
 }

@@ -1,20 +1,12 @@
 package dev.taihei.mihon.sources
 
-import zio.json.*
-
-// Loads the JSON name lists. It throws on failure on purpose: the lists are compiled in from
-// shared/resources (see EmbeddedLists in build.mill), so a failure here is a build error to fix
-// before the application can run, not an input to handle.
+// Reads a data file. Scala.js has no classpath, so the build compiles the files in from
+// shared/resources (EmbeddedData in build.mill), after checking each one. It throws on an
+// unknown path on purpose: that is a build error to fix before the application can run, not an
+// input to handle.
 private[mihon] object ResourceLoader:
 
-  def loadStringList(resourcePath: String): List[String] =
-    val json = EmbeddedLists.byPath.getOrElse(
-      resourcePath,
-      throw new RuntimeException(
-        s"Unknown resource: $resourcePath. Embedded (JS): ${EmbeddedLists.byPath.keys.toSeq.sorted.mkString(", ")}"
-      ),
+  def load(resourcePath: String): String =
+    EmbeddedData.get(resourcePath).getOrElse(
+      throw new IllegalStateException(s"Resource not found: $resourcePath")
     )
-    json.fromJson[List[String]] match
-      case Right(list) => list
-      case Left(error) =>
-        throw new RuntimeException(s"Failed to parse JSON from $resourcePath: $error")

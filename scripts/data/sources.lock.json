@@ -1,0 +1,212 @@
+{
+  "census/2010surnames-names.zip": {
+    "url": "https://www2.census.gov/topics/genealogy/2010surnames/names.zip",
+    "sha256": "117c41cb4668727b7627b2845b6df3f83eb2a22a1813f42c0ff4bdcab86de135",
+    "bytes": 12874389,
+    "retrieved": "2026-10-24"
+  },
+  "census/dist.female.first": {
+    "url": "https://www2.census.gov/topics/genealogy/1990surnames/dist.female.first",
+    "sha256": "bd2f310fc4e5d5e5ea122c9d4342c9821145823118eb20db1647f305ec77b358",
+    "bytes": 149625,
+    "retrieved": "2026-10-24"
+  },
+  "census/dist.male.first": {
+    "url": "https://www2.census.gov/topics/genealogy/1990surnames/dist.male.first",
+    "sha256": "0a5078ef6effe3b483d15b0f7f95047662126c9bfb624ecd5e5b978fc0f2470b",
+    "bytes": 42665,
+    "retrieved": "2026-10-24"
+  },
+  "cldr-47.0.0/cldr-core/LICENSE": {
+    "url": "https://cdn.jsdelivr.net/npm/cldr-core@47.0.0/LICENSE",
+    "sha256": "b4c0ae8ef04f7059f96ce5bbe0467f9fe6f6d81bbe13517701dfeb961fb4d0b6",
+    "bytes": 2033,
+    "retrieved": "2026-10-24"
+  },
+  "cldr-47.0.0/cldr-core/supplemental/likelySubtags.json": {
+    "url": "https://cdn.jsdelivr.net/npm/cldr-core@47.0.0/supplemental/likelySubtags.json",
+    "sha256": "b0f791c37b7f1dedb57f6d0542b904ab0ceee7a476f5194c797f53e87511b9db",
+    "bytes": 218772,
+    "retrieved": "2026-10-24"
+  },
+  "cldr-47.0.0/cldr-localenames-full/main/en/territories.json": {
+    "url": "https://cdn.jsdelivr.net/npm/cldr-localenames-full@47.0.0/main/en/territories.json",
+    "sha256": "158c1d575308f7e46912edbeda435c8fe2ef5dad280798231f3a432e406b1807",
+    "bytes": 9956,
+    "retrieved": "2026-10-24"
+  },
+  "cldr-47.0.0/cldr-misc-full/main/ar/delimiters.json": {
+    "url": "https://cdn.jsdelivr.net/npm/cldr-misc-full@47.0.0/main/ar/delimiters.json",
+    "sha256": "3d602c24023aa1bd998335ebe3f497390a17093b74791ae6c797a974813d6de2",
+    "bytes": 267,
+    "retrieved": "2026-10-24"
+  },
+  "cldr-47.0.0/cldr-misc-full/main/bg/delimiters.json": {
+    "url": "https://cdn.jsdelivr.net/npm/cldr-misc-full@47.0.0/main/bg/delimiters.json",
+    "sha256": "f37a1033935efbb023767f3aa2dbe0565d00241431983babbe0d54fde2839ae8",
+    "bytes": 267,
+    "retrieved": "2026-10-24"
+  },
+  "cldr-47.0.0/cldr-misc-full/main/de/delimiters.json": {
+    "url": "https://cdn.jsdelivr.net/npm/cldr-misc-full@47.0.0/main/de/delimiters.json",
+    "sha256": "8885bcb7f04cc611a0904583a708396ecfc273cfaf69935441b1124f9cdc9557",
+    "bytes": 267,
+    "retrieved": "2026-10-24"
+  },
+  "cldr-47.0.0/cldr-misc-full/main/el/delimiters.json": {
+    "url": "https://cdn.jsdelivr.net/npm/cldr-misc-full@47.0.0/main/el/delimiters.json",
+    "sha256": "24cf80d4638d234949f9eb2830905691fc61e58c1b68e929f30fbef77a7888bd",
+    "bytes": 265,
+    "retrieved": "2026-10-24"
+  },
+  "cldr-47.0.0/cldr-misc-full/main/en/delimiters.json": {
+    "url": "https://cdn.jsdelivr.net/npm/cldr-misc-full@47.0.0/main/en/delimiters.json",
+    "sha256": "7dba09b7aba3f8c98292df1e6fee27cdc950d3542139472799ca350d877909bb",
+    "bytes": 267,
+    "retrieved": "2026-10-24"
+  },
+  "cldr-47.0.0/cldr-misc-full/main/es/delimiters.json": {
+    "url": "https://cdn.jsdelivr.net/npm/cldr-misc-full@47.0.0/main/es/delimiters.json",
+    "sha256": "72a69bb3fcaf42c08fd937c34a943b2654d522a3a11e350dec6e3c003e388ea9",
+    "bytes": 267,
+    "retrieved": "2026-10-24"
+  },
+  "cldr-47.0.0/cldr-misc-full/main/fr/delimiters.json": {
+    "url": "https://cdn.jsdelivr.net/npm/cldr-misc-full@47.0.0/main/fr/delimiters.json",
+    "sha256": "f77ccca4fe6749dcd5801f8dce618beea0318c4cfbff7934287e3d968d96c095",
+    "bytes": 263,
+    "retrieved": "2026-10-24"
+  },
+  "cldr-47.0.0/cldr-misc-full/main/he/delimiters.json": {
+    "url": "https://cdn.jsdelivr.net/npm/cldr-misc-full@47.0.0/main/he/delimiters.json",
+    "sha256": "52a6099efc608e956574551aff671f1ef03004ac0a55482eca1a69a6016c8888",
+    "bytes": 267,
+    "retrieved": "2026-10-24"
+  },
+  "cldr-47.0.0/cldr-misc-full/main/hi/delimiters.json": {
+    "url": "https://cdn.jsdelivr.net/npm/cldr-misc-full@47.0.0/main/hi/delimiters.json",
+    "sha256": "6036e1d19f25bbef2683d3135d1ce89cf5a226d85f40bae62c68aee950d1c15e",
+    "bytes": 267,
+    "retrieved": "2026-10-24"
+  },
+  "cldr-47.0.0/cldr-misc-full/main/hu/delimiters.json": {
+    "url": "https://cdn.jsdelivr.net/npm/cldr-misc-full@47.0.0/main/hu/delimiters.json",
+    "sha256": "1ec4b8d7ea4952da39ad30c6de0302d05a68614d925c82433e91f59927e10ece",
+    "bytes": 265,
+    "retrieved": "2026-10-24"
+  },
+  "cldr-47.0.0/cldr-misc-full/main/it/delimiters.json": {
+    "url": "https://cdn.jsdelivr.net/npm/cldr-misc-full@47.0.0/main/it/delimiters.json",
+    "sha256": "d016f3b3aa7cf9740195b32eec0192d1fb13a04185284e1faddf45705d242d8c",
+    "bytes": 265,
+    "retrieved": "2026-10-24"
+  },
+  "cldr-47.0.0/cldr-misc-full/main/ja/delimiters.json": {
+    "url": "https://cdn.jsdelivr.net/npm/cldr-misc-full@47.0.0/main/ja/delimiters.json",
+    "sha256": "b5381ed238e92f3bc63f94a24b12ad192a297dc58e15afd8cf17da5b239e0a6b",
+    "bytes": 267,
+    "retrieved": "2026-10-24"
+  },
+  "cldr-47.0.0/cldr-misc-full/main/ko/delimiters.json": {
+    "url": "https://cdn.jsdelivr.net/npm/cldr-misc-full@47.0.0/main/ko/delimiters.json",
+    "sha256": "4257ab3c82bb486a5c20182fbe2f7e8db575e6c1f3a18d06495670820210ce88",
+    "bytes": 267,
+    "retrieved": "2026-10-24"
+  },
+  "cldr-47.0.0/cldr-misc-full/main/nl/delimiters.json": {
+    "url": "https://cdn.jsdelivr.net/npm/cldr-misc-full@47.0.0/main/nl/delimiters.json",
+    "sha256": "17471b5aedd3812c47c066569bad5d850602a162538c7837e832451b499b94ef",
+    "bytes": 267,
+    "retrieved": "2026-10-24"
+  },
+  "cldr-47.0.0/cldr-misc-full/main/pl/delimiters.json": {
+    "url": "https://cdn.jsdelivr.net/npm/cldr-misc-full@47.0.0/main/pl/delimiters.json",
+    "sha256": "66361f409d3daa467fd243c1becdde63e061c16dfc6409208e7ae4520f3f254a",
+    "bytes": 265,
+    "retrieved": "2026-10-24"
+  },
+  "cldr-47.0.0/cldr-misc-full/main/pt/delimiters.json": {
+    "url": "https://cdn.jsdelivr.net/npm/cldr-misc-full@47.0.0/main/pt/delimiters.json",
+    "sha256": "9b00615b6df751390908e2cf64f8bd42b59f3adc005a217774da7f8199c84c96",
+    "bytes": 267,
+    "retrieved": "2026-10-24"
+  },
+  "cldr-47.0.0/cldr-misc-full/main/ru/delimiters.json": {
+    "url": "https://cdn.jsdelivr.net/npm/cldr-misc-full@47.0.0/main/ru/delimiters.json",
+    "sha256": "3cea69c5a49b41db4e30f6f09adb3c95648afaad2124f69d697fee43af9d0475",
+    "bytes": 265,
+    "retrieved": "2026-10-24"
+  },
+  "cldr-47.0.0/cldr-misc-full/main/sr/delimiters.json": {
+    "url": "https://cdn.jsdelivr.net/npm/cldr-misc-full@47.0.0/main/sr/delimiters.json",
+    "sha256": "8470817dd5544daa06c5f030cfb31dd9842b52fc44825844153f9d6e2b883266",
+    "bytes": 267,
+    "retrieved": "2026-10-24"
+  },
+  "cldr-47.0.0/cldr-misc-full/main/th/delimiters.json": {
+    "url": "https://cdn.jsdelivr.net/npm/cldr-misc-full@47.0.0/main/th/delimiters.json",
+    "sha256": "0023ed0aa9d41c0466ebaf0cc4267c11ae8912f274143d6e7c6489ef048b32fe",
+    "bytes": 267,
+    "retrieved": "2026-10-24"
+  },
+  "cldr-47.0.0/cldr-misc-full/main/tr/delimiters.json": {
+    "url": "https://cdn.jsdelivr.net/npm/cldr-misc-full@47.0.0/main/tr/delimiters.json",
+    "sha256": "468d8c8b30fd987d857bdba0bcda2ca30b3a17e4f60dde75af480376fa159d64",
+    "bytes": 267,
+    "retrieved": "2026-10-24"
+  },
+  "cldr-47.0.0/cldr-misc-full/main/uk/delimiters.json": {
+    "url": "https://cdn.jsdelivr.net/npm/cldr-misc-full@47.0.0/main/uk/delimiters.json",
+    "sha256": "9779da602c2fa68078607fe2a2d13f4b792f12cc0dd9dc32d09c3ccfe803c656",
+    "bytes": 265,
+    "retrieved": "2026-10-24"
+  },
+  "cldr-47.0.0/cldr-misc-full/main/vi/delimiters.json": {
+    "url": "https://cdn.jsdelivr.net/npm/cldr-misc-full@47.0.0/main/vi/delimiters.json",
+    "sha256": "2c74ef507b4874108962d74eae5e386f84b6895f4aa7bf48830f2ce361f2f05d",
+    "bytes": 267,
+    "retrieved": "2026-10-24"
+  },
+  "cldr-47.0.0/cldr-misc-full/main/zh-Hant/delimiters.json": {
+    "url": "https://cdn.jsdelivr.net/npm/cldr-misc-full@47.0.0/main/zh-Hant/delimiters.json",
+    "sha256": "08aa133e037b7e7fc6ddb7f3607e8481ccd8b20de041c47e79eafe2dbe6540c9",
+    "bytes": 298,
+    "retrieved": "2026-10-24"
+  },
+  "cldr-47.0.0/cldr-misc-full/main/zh/delimiters.json": {
+    "url": "https://cdn.jsdelivr.net/npm/cldr-misc-full@47.0.0/main/zh/delimiters.json",
+    "sha256": "70d8c955b62e4c94f36aafd9d015a0154fad3a11bf7fc4e82b241ecb8876cb16",
+    "bytes": 267,
+    "retrieved": "2026-10-24"
+  },
+  "ldnoobw-5faf2ba42d7b/en": {
+    "url": "https://raw.githubusercontent.com/LDNOOBW/List-of-Dirty-Naughty-Obscene-and-Otherwise-Bad-Words/5faf2ba42d7b1c0977169ec3611df25a3c08eb13/en",
+    "sha256": "af851ecef1d5f212caba17339b12ac39cc2fef7d78c74876f67237644fcee8bd",
+    "bytes": 3777,
+    "retrieved": "2026-10-24"
+  },
+  "tatoeba/eng_sentences.tsv.bz2": {
+    "url": "https://downloads.tatoeba.org/exports/per_language/eng/eng_sentences.tsv.bz2",
+    "sha256": "f634eaaf26623c2a2e170be2dae54b18388479311ae8619d04889df4e5d021f3",
+    "bytes": 24918676,
+    "retrieved": "2026-10-24"
+  },
+  "wikidata/cities-US-100000.json": {
+    "url": "https://query.wikidata.org/sparql (query in scripts/data)",
+    "sha256": "55206f96dd6dd2ca30a1db8d6e8808dff9976c99717db104aa0a9434239a9caa",
+    "bytes": 102182,
+    "retrieved": "2026-10-24"
+  },
+  "wikidata/city-labels-US-en.json": {
+    "url": "https://query.wikidata.org/sparql (query in scripts/data)",
+    "sha256": "b9e3b16266b3aadc7f329f5350fa5b5dd3945eae62b67435b85d82f80d56e98f",
+    "bytes": 132063,
+    "retrieved": "2026-10-24"
+  },
+  "wikidata/countries-la.json": {
+    "url": "https://query.wikidata.org/sparql (query in scripts/data)",
+    "sha256": "a2468dca0b5f37d419c30c3fd0877e9dfe7c50ee4b319a62580eef241928a51a",
+    "bytes": 49396,
+    "retrieved": "2026-10-24"
+  }
+}

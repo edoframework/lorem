@@ -1,0 +1,7 @@
+{
+  "languages": [
+    {"tag": "en", "script": "Latn", "country": "US"},
+    {"tag": "la", "script": "Latn", "country": "VA"}
+  ],
+  "aliases": []
+}
