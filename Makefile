@@ -182,7 +182,7 @@ CENTRAL_GUARD = CODE=$$(curl -q -s --proto '=https' --max-time 30 -o /dev/null -
 GITHUB_STATUS = { printf 'user = "%s:%s"\n' "$$RUSER" "$$RTOKEN" | \
 	curl -q -K - -s --proto '=https' --max-time 60 -o /dev/null -w '%{http_code}' "$$URL" || true; }
 
-.PHONY: clean fix fmt compile prepare build test mima budget repo-guard release-test validate deps publishLocal publish \
+.PHONY: clean fix fmt compile prepare build test mima budget data-check-test repo-guard release-test validate deps publishLocal publish \
         publish-dry-run release-bundle publish-github verify-github release-github \
         release-preflight release-prepare release-finalize release-abort release-status embargo-lift
 
@@ -264,7 +264,11 @@ release-test:
 budget:
 	./mill mihon.budget
 
-validate: repo-guard release-test fix fmt compile test mima budget
+# The build's data check refuses what it must (links, stray files, malformed data, over budget).
+data-check-test:
+	@bash scripts/test-data-check.sh
+
+validate: repo-guard release-test data-check-test fix fmt compile test mima budget
 
 deps:
 	./mill mill.scalalib.Dependency/showUpdates

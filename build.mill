@@ -609,6 +609,12 @@ object mihon extends Module {
     EmbeddedData.check(sharedResources().path).map(PathRef(_))
   }
 
+  // The same check on another resource root, for scripts/test-data-check.sh, which proves that it
+  // refuses what it must: ./mill mihon.checkData <folder>.
+  def checkData(folder: String) = Task.Command {
+    EmbeddedData.check(os.Path(folder, os.pwd)).size
+  }
+
   def licenceFiles = Task.Sources(wsRoot / "LICENSE", wsRoot / "NOTICE", wsRoot / "LICENSE-UNICODE")
 
   def metaInf = Task {

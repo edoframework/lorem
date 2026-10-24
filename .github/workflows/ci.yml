@@ -83,6 +83,10 @@ jobs:
       - name: Release machinery tests
         run: make release-test
 
+      # The build's check of the language data refuses links, stray files and malformed data.
+      - name: Data check tests
+        run: make data-check-test
+
       - name: Check formatting
         run: ./mill __.checkFormat
 
