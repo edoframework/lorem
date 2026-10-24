@@ -81,8 +81,9 @@ build itself resolves from Maven Central only, and `make validate` checks it
 validated, and refuses when a file git does not track is in a source or
 resource folder, or a stray build file is in the tree.
 
-Publishing reads the Central Portal user token and the release key from
-`~/.edo-release.env` (a name from the Edo Framework days, kept because the
+`make publish` is only for a security fix under embargo, which goes to Central
+first; it refuses any other version. It reads the Central Portal user token and
+the release key from `~/.edo-release.env` (a name from the Edo Framework days, kept because the
 maintainers' workstations write it for every library; `RELEASE_ENV=…`
 points elsewhere) or the environment (`MILL_SONATYPE_USERNAME`,
 `MILL_SONATYPE_PASSWORD`, `MILL_PGP_SECRET_BASE64`, `MILL_PGP_PASSPHRASE`).
