@@ -7,10 +7,12 @@ Package `dev.taihei.mihon`.
 `Mihon.languages` lists the languages with data. Each has a default country (CLDR's likely
 region), whose addresses, cities and phone numbers it uses.
 
+The languages: `ar` (Egypt), `en` (United States), `ja` (Japan), `la` (Vatican City), `ru`
+(Russia), `th` (Thailand), `zh-Hans` (China).
+
 A language is looked up by its canonical tag, then as an alias (`zh`, `zh-CN`, `zh-SG` to
-`zh-Hans`; `zh-TW`, `zh-HK`, `zh-MO` to `zh-Hant`; `sr`, `sr-RS` to `sr-Cyrl`), then with subtags
-stripped from the right (RFC 4647 lookup). A tag that names a script other than the found
-language's is refused, so `sr-Latn` is not served by Cyrillic. A refusal is an
+`zh-Hans`), then with subtags stripped from the right (RFC 4647 lookup). A tag that names a
+script other than the found language's is refused, so `ru-Latn` is not served by Cyrillic. A refusal is an
 `IllegalArgumentException` naming the tag (printable ASCII) and the languages there are.
 `mihon.language` is the resolved language.
 

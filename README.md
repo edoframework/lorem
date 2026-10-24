@@ -126,12 +126,35 @@ another language that shares the same random generator and clock.
 
 ### Languages
 
-`Mihon.languages` lists the languages with data, sorted by tag: `en` (English, United States)
-and `la` (Latin, Vatican City). Latin's text is Lorem Ipsum.
+`Mihon.languages` lists the languages with data, sorted by tag, each with its default country:
 
-A factory or `withLanguage` looks a language up by its tag, then by an alias, then with
-subtags stripped from the right, so `en-GB` is served by `en`. A tag that names another script
-than the one found is refused (`en-Cyrl`), and so is a language without data, with an
+| Tag | Language | Script | Country | Conventions |
+| --- | --- | --- | --- | --- |
+| `ar` | Arabic | Arabic, right to left | Egypt | ، and ؟ |
+| `en` | English | Latin | United States | title case in titles; phone numbers reserved for fiction |
+| `ja` | Japanese | kanji and kana | Japan | no spaces, 。、「」, family name first, kana readings |
+| `la` | Latin | Latin | Vatican City | Lorem Ipsum |
+| `ru` | Russian | Cyrillic | Russia | « », female forms of family names |
+| `th` | Thai | Thai | Thailand | no spaces within a sentence, no final stop |
+| `zh-Hans` | Chinese (Simplified) | Han | China | no spaces, 。，, family name first |
+
+The same seed in several scripts:
+
+```scala
+Mihon.seeded(1L, Language("ja")).person      // 三浦さくら, latin "Miura Sakura", reading ミウラ サクラ
+Mihon.seeded(1L, Language("ru")).person      // Ирина Игнатьева, latin "Irina Ignateva"
+Mihon.seeded(1L, Language("ar")).person      // ملك مصطفى, latin "Malak Mostafa"
+Mihon.seeded(1L, Language("zh-Hans")).person // 姜青, latin "Jiang Qing"
+Mihon.seeded(1L, Language("ru")).sentence    // "Подарок смогу вода что думаю которую слышу идите разве их."
+Mihon.seeded(1L, Language("ja")).address.lines // List(日本, 〒545-0777, 春日井市本町1-19-11)
+```
+
+The words of a language's text are drawn by how often they are used, so the text has the
+language's script, letters and rhythm, but it means nothing: it is filler, as Lorem Ipsum is.
+
+A factory or `withLanguage` looks a language up by its tag, then by an alias (`zh`, `zh-CN` and
+`zh-SG` are `zh-Hans`), then with subtags stripped from the right, so `en-GB` is served by `en`
+and `ja-JP` by `ja`. A tag that names another script than the one found is refused (`ru-Latn`), and so is a language without data, with an
 `IllegalArgumentException` that names the tag and the languages there are. With a language
 from outside, ask first:
 
