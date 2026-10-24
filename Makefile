@@ -113,6 +113,8 @@ TAG_VERSION = VERSION=$$(git describe --exact-match --tags --match 'v[0-9]*' HEA
 	if [ -n "$$(printf '%s\n' "$$PORCELAIN" | grep -v '^??' || true)" ]; then \
 		echo "[ERROR] tracked changes at the release tag:"; printf '%s\n' "$$PORCELAIN" | grep -v '^??'; exit 1; fi; \
 	if [ -L "$(BUNDLES)" ]; then echo "[ERROR] $(BUNDLES) is a symlink"; exit 1; fi; \
+	TRACKED=$$(git ls-files -- "$(BUNDLES)") || exit 1; \
+	if [ -n "$$TRACKED" ]; then echo "[ERROR] files under $(BUNDLES) are tracked: a bundle is built here, never committed"; exit 1; fi; \
 	B="$(BUNDLES)/$(BUNDLE_PREFIX)-$$VERSION"
 
 # Needs VERSION. Refuses a version under embargo, and any upload while an embargoed release is
@@ -122,8 +124,15 @@ EMBARGO_GUARD = if [ -L "$(EMBARGO_FILE)" ] || git ls-files --error-unmatch "$(E
 	if [ -f "$(EMBARGO_FILE)" ] && grep -qxF "$$VERSION" "$(EMBARGO_FILE)"; then \
 		echo "[ERROR] $$VERSION is under embargo: a security fix goes to Maven Central first, and to GitHub Packages"; \
 		echo "        only after its advisory is published (then make embargo-lift VERSION=$$VERSION)"; exit 1; fi; \
-	if [ -f "$(RELEASE_STATE)" ] && ! [ -L "$(RELEASE_STATE)" ] && python3 -I -c 'import json, sys; sys.exit(0 if json.load(open(sys.argv[1])).get("embargo") else 1)' "$(RELEASE_STATE)"; then \
-		echo "[ERROR] the release in progress is under embargo: nothing goes to GitHub Packages"; exit 1; fi
+	if [ -L "$(RELEASE_STATE)" ]; then echo "[ERROR] $(RELEASE_STATE) is a symlink"; exit 1; fi; \
+	if [ -e "$(RELEASE_STATE)" ]; then \
+		EMB=$$(python3 -I -c 'import json, sys; print("yes" if json.load(open(sys.argv[1])).get("embargo") is not False else "no")' "$(RELEASE_STATE)" 2>/dev/null) || EMB=unreadable; \
+		case "$$EMB" in \
+			no) ;; \
+			yes) echo "[ERROR] the release in progress is under embargo: nothing goes to GitHub Packages"; exit 1;; \
+			*) echo "[ERROR] $(RELEASE_STATE) cannot be read: refusing, it may hold an embargo"; exit 1;; \
+		esac; \
+	fi
 
 # The read token, from Coursier's credentials file: sets RUSER and RTOKEN. They stay shell
 # variables, never exported and never an argument (a command line is readable in /proc); curl
@@ -148,6 +157,9 @@ SIGNATURE_CHECK = ( set -eo pipefail; N=0; \
 	  [ -n "$$A" ] || continue; \
 	  STATUS=$$(LC_ALL=C gpg --batch --no-tty --status-fd 1 --verify "$$A" "$${A%.asc}" 2>/dev/null) || { \
 	    echo "[signatures] $$A does not verify"; exit 1; }; \
+	  if ! printf '%s\n' "$$STATUS" | grep -q '^\[GNUPG:\] GOODSIG ' || \
+	     printf '%s\n' "$$STATUS" | grep -qE '^\[GNUPG:\] (BADSIG|ERRSIG|EXPSIG|EXPKEYSIG|REVKEYSIG|KEYEXPIRED|KEYREVOKED)( |$$)'; then \
+	    echo "[signatures] $$A is not a good signature by a valid key (expired or revoked?)"; exit 1; fi; \
 	  FPR=$$(printf '%s\n' "$$STATUS" | awk '$$1 == "[GNUPG:]" && $$2 == "VALIDSIG" { print $$NF }'); \
 	  if [ "$$FPR" != "$(RELEASE_KEY)" ]; then echo "[signatures] $$A is not signed by the release key $(RELEASE_KEY) ($${FPR:-no valid signature})"; exit 1; fi; \
 	  N=$$((N + 1)); \
@@ -168,7 +180,7 @@ CENTRAL_GUARD = CODE=$$(curl -s --max-time 30 -o /dev/null -w '%{http_code}' "ht
 
 # Needs RUSER and RTOKEN. The HTTP status of a GET of $$URL, without following a redirect.
 GITHUB_STATUS = { printf 'user = "%s:%s"\n' "$$RUSER" "$$RTOKEN" | \
-	curl -K - -s --proto '=https' --max-time 60 -o /dev/null -w '%{http_code}' "$$URL" || true; }
+	curl -q -K - -s --proto '=https' --max-time 60 -o /dev/null -w '%{http_code}' "$$URL" || true; }
 
 .PHONY: clean fix fmt compile prepare build test mima repo-guard release-test validate deps publishLocal publish \
         publish-dry-run release-bundle publish-github verify-github release-github \
@@ -383,7 +395,8 @@ release-bundle:
 # or in the environment, and no other target and no Mill process sees it. A version is uploaded
 # once: from the first file on it is final, and an interrupted upload is never started again.
 # Before the first file it checks the bundle once more: the ledger, every signature by the release
-# key, and that Maven Central does not have the version yet.
+# key, that Maven Central does not have the version yet, and, with the read token, that GitHub
+# Packages has none of its files (so a lost UPLOAD_STARTED cannot mix two signing runs).
 publish-github:
 	@set -eo pipefail; \
 	$(TAG_VERSION); \
@@ -395,6 +408,12 @@ publish-github:
 	python3 -I scripts/release.py verify --dest "$$B" > "$$B/upload-order"; \
 	DIR="$$B/repository"; $(SIGNATURE_CHECK); \
 	$(CENTRAL_GUARD); \
+	$(READ_AUTH); \
+	while read -r SUM P; do \
+	  URL="$(GITHUB_PACKAGES_URL)/$$P"; CODE=$$($(GITHUB_STATUS)); \
+	  if [ "$$CODE" != 404 ]; then \
+	    echo "[publish-github] $$P answers HTTP $$CODE on GitHub Packages, not 404: the version is there already, or we cannot tell"; exit 1; fi; \
+	done < "$$B/SHA256SUMS"; \
 	F="$(PUBLISH_ENV)"; \
 	if [ ! -f "$$F" ] || [ -L "$$F" ] || [ ! -O "$$F" ] || ! python3 -I -c 'import os, sys; sys.exit(os.stat(sys.argv[1]).st_mode & 0o077)' "$$F"; then \
 	  echo "[publish-github] $$F must be a file of yours with mode 600 (the dotfiles write it)"; exit 1; fi; \
@@ -406,7 +425,7 @@ publish-github:
 	echo "$$(date -u +%Y-%m-%dT%H:%M:%SZ) to $(GITHUB_PACKAGES_URL)" > "$$B/UPLOAD_STARTED"; \
 	echo "[publish-github] $$VERSION to $(GITHUB_PACKAGES_URL): from here on the version is final"; \
 	while IFS= read -r P; do \
-	  CODE=$$(printf 'user = "%s:%s"\n' "$$PUSER" "$$PTOKEN" | curl -K - -sS --proto '=https' --max-time 300 \
+	  CODE=$$(printf 'user = "%s:%s"\n' "$$PUSER" "$$PTOKEN" | curl -q -K - -sS --proto '=https' --max-time 300 \
 	    -X PUT --upload-file "$$B/repository/$$P" -o "$$RESPONSE" -w '%{http_code}' "$(GITHUB_PACKAGES_URL)/$$P") || CODE="$${CODE:-000}"; \
 	  case "$$CODE" in \
 	    2??) echo "  uploaded $$P";; \
@@ -432,7 +451,7 @@ verify-github:
 	BAD=0; N=0; \
 	while read -r SUM P; do \
 	  rm -f "$$T/file"; \
-	  CODE=$$(printf 'user = "%s:%s"\n' "$$RUSER" "$$RTOKEN" | curl -K - -sS -L --proto '=https' --proto-redir '=https' --max-time 300 \
+	  CODE=$$(printf 'user = "%s:%s"\n' "$$RUSER" "$$RTOKEN" | curl -q -K - -sS -L --proto '=https' --proto-redir '=https' --max-time 300 \
 	    -o "$$T/file" -w '%{http_code}' "$(GITHUB_PACKAGES_URL)/$$P") || CODE="$${CODE:-000}"; \
 	  if [ "$$CODE" != 200 ] || [ ! -f "$$T/file" ]; then echo "  MISSING  $$P (HTTP $$CODE)"; BAD=1; continue; fi; \
 	  GOT=$$(python3 -I -c 'import hashlib, sys; print(hashlib.sha256(open(sys.argv[1], "rb").read()).hexdigest())' "$$T/file"); \
@@ -671,8 +690,8 @@ release-finalize:
 		echo "[ERROR] No release in progress. Run 'make release-prepare TYPE=...' first."; exit 1; \
 	fi; \
 	$(STATE_GUARD); \
-	NEW=$$(python3 -c "import json; print(json.load(open('$(RELEASE_STATE)'))['newVersion'])"); \
-	PREPARED=$$(python3 -c "import json; print(json.load(open('$(RELEASE_STATE)')).get('head', ''))"); \
+	NEW=$$(python3 -I -c 'import json, sys; print(json.load(open(sys.argv[1]))["newVersion"])' "$(RELEASE_STATE)"); \
+	PREPARED=$$(python3 -I -c 'import json, sys; print(json.load(open(sys.argv[1])).get("head", ""))' "$(RELEASE_STATE)"); \
 	if [ "$$PREPARED" != "$$(git rev-parse HEAD)" ]; then \
 		echo "[ERROR] HEAD is not the commit release-prepare validated ($${PREPARED:-none recorded}): make release-abort, then release-prepare again"; exit 1; \
 	fi; \
@@ -739,7 +758,7 @@ release-abort:
 	@set -e; \
 	if [ -f $(RELEASE_STATE) ]; then \
 		$(STATE_GUARD); \
-		NEW=$$(python3 -c "import json; print(json.load(open('$(RELEASE_STATE)'))['newVersion'])"); \
+		NEW=$$(python3 -I -c 'import json, sys; print(json.load(open(sys.argv[1]))["newVersion"])' "$(RELEASE_STATE)"); \
 		if ! [[ "$$NEW" =~ ^[0-9]+\.[0-9]+\.[0-9]+$$ ]]; then echo "[ERROR] Not a version: $$NEW"; exit 1; fi; \
 		B="$(BUNDLES)/$(BUNDLE_PREFIX)-$$NEW"; \
 		if [ -e "$$B/UPLOAD_STARTED" ]; then \
@@ -782,7 +801,7 @@ release-status:
 	@$(STATE_GUARD); \
 	if [ -f $(RELEASE_STATE) ]; then \
 		echo "Release in progress:"; \
-		python3 -c "import json; d=json.load(open('$(RELEASE_STATE)')); [print(f'  {k}: {v}') for k,v in d.items()]"; \
+		python3 -I -c 'import json, sys; [print(f"  {k}: {v}") for k, v in json.load(open(sys.argv[1])).items()]' "$(RELEASE_STATE)"; \
 	else \
 		echo "No release in progress"; \
 	fi

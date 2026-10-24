@@ -71,7 +71,10 @@ class Registry(http.server.BaseHTTPRequestHandler):
         note("registry", self, "GET")
         if not self.headers.get("Authorization"):
             return self.answer(401)
-        if not os.path.isfile(stored(self.path)):
+        # A token named "blind" sees nothing: it lets a test reach the registry's own refusal of
+        # a second upload, past the client's check that the files are not there yet.
+        blind = "blind" in base64.b64decode(self.headers["Authorization"][6:]).decode()
+        if blind or not os.path.isfile(stored(self.path)):
             return self.answer(404)
         self.send_response(302)
         self.send_header("Location", f"https://127.0.0.1:{storage_port}/blob{self.path}")

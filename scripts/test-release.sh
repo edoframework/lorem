@@ -191,7 +191,7 @@ git -C "$G" reset -q --hard "v$V"
 echo "# edited" >> "$G/Makefile"
 expect "publish-github refuses tracked changes at the tag" 1 "tracked changes" "${M[@]}" publish-github
 git -C "$G" checkout -q Makefile
-[ ! -e "$B/UPLOAD_STARTED" ] && [ ! -s "$W/log" ] && pass "no refusal sent anything" || fail "a refusal reached the registry"
+[ ! -e "$B/UPLOAD_STARTED" ] && ! grep -q '^registry PUT' "$W/log" && pass "no refusal uploaded anything" || fail "a refusal uploaded to the registry"
 
 # Every command line, while the upload runs: the token is never an argument.
 ( while [ ! -e "$W/stop" ]; do
@@ -208,9 +208,22 @@ diff <(cd "$B/repository" && find . -type f | sort | xargs sha256sum) <(cd "$W/s
   && pass "the registry holds exactly the bundle's files" || fail "the registry holds other files"
 expect "publish-github never uploads a version twice" 1 "never uploaded again" "${M[@]}" publish-github
 mv "$B/UPLOAD_STARTED" "$W/started"; : > "$W/log"
-expect "a second upload the registry refuses stops at once" 1 "HTTP 409" "${M[@]}" publish-github
+expect "without the marker, files already on GitHub Packages stop the upload" 1 "the version is there already" "${M[@]}" publish-github
+[ "$(grep -c '^registry PUT' "$W/log")" = 0 ] && pass "and nothing was uploaded" || fail "PUTs went out"
+printf "taihei.host=maven.pkg.github.com\ntaihei.username=test-user\ntaihei.password=ghp_testreadblind\n" > "$W/blind.properties"
+: > "$W/log"
+expect "a second upload the registry refuses stops at once" 1 "HTTP 409" "${M[@]}" publish-github "READ_CREDENTIALS=$W/blind.properties"
 [ "$(grep -c '^registry PUT' "$W/log")" = 1 ] && pass "no PUT followed the refusal" || fail "PUTs went on after the refusal"
 mv "$W/started" "$B/UPLOAD_STARTED"
+printf 'not json' > "$G/.release-state.json"
+expect "an unreadable release state refuses, since it may hold an embargo" 1 "cannot be read" "${M[@]}" publish-github
+rm "$G/.release-state.json"
+mkdir -p "$G/.release-bundles/tracked"; echo x > "$G/.release-bundles/tracked/f"
+git -C "$G" add -f .release-bundles/tracked/f; git -C "$G" -c user.name=Test -c user.email=test@example.invalid -c commit.gpgsign=false commit -qm tracked
+git -C "$G" -c user.name=Test -c user.email=test@example.invalid -c tag.gpgsign=false tag -f -a "v$V" -m test >/dev/null
+expect "a committed bundle directory is refused" 1 "are tracked" "${M[@]}" verify-github
+git -C "$G" tag -d "v$V" >/dev/null; git -C "$G" reset -q --hard HEAD~1; rm -rf "$G/.release-bundles/tracked"
+git -C "$G" -c user.name=Test -c user.email=test@example.invalid -c tag.gpgsign=false tag -a "v$V" -m test
 
 : > "$W/log"
 expect "verify-github reads every file back unchanged" 0 "all $COUNT files" "${M[@]}" verify-github
