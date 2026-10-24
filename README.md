@@ -60,7 +60,8 @@ The version is the git tag: an exact `v`-tag on a clean tree is the release,
 anything else a SNAPSHOT of the last tag.
 
 ```sh
-make release-prepare TYPE=patch|minor|major   # validate, write RELEASE_x_y_z.md
+make release-prepare TYPE=patch|minor|major EMBARGO=0|1
+                                               # validate, write RELEASE_x_y_z.md
 make release-finalize                          # commit the notes, tag locally, check
                                                # both registries, build and sign the
                                                # bundle once, upload it to GitHub

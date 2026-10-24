@@ -225,6 +225,14 @@ expect "a committed bundle directory is refused" 1 "are tracked" "${M[@]}" verif
 git -C "$G" tag -d "v$V" >/dev/null; git -C "$G" reset -q --hard HEAD~1; rm -rf "$G/.release-bundles/tracked"
 git -C "$G" -c user.name=Test -c user.email=test@example.invalid -c tag.gpgsign=false tag -a "v$V" -m test
 
+# make publish, the direct Central upload, signs again: only for an embargoed version, and never
+# for one GitHub Packages has.
+expect "publish refuses a version that is not under embargo" 1 "is not under embargo" "${M[@]}" publish
+echo "$V" > "$G/.release-embargo"
+expect "publish refuses a version GitHub Packages has" 1 "on GitHub Packages, not 404" "${M[@]}" publish
+rm "$G/.release-embargo"
+expect "release-prepare wants the embargo decided" 1 "never a default" "${M[@]}" release-prepare TYPE=patch
+
 : > "$W/log"
 expect "verify-github reads every file back unchanged" 0 "all $COUNT files" "${M[@]}" verify-github
 [ "$(grep -c "^registry GET .* auth=test-user:read$" "$W/log")" = "$COUNT" ] && pass "every read used the read token" || fail "reads"

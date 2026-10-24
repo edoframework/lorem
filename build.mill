@@ -70,7 +70,7 @@ object release extends Module {
   // a baseline we cannot determine must not turn into no baseline.
   private def onCentral(v: String): Boolean = {
     val code = os
-      .proc("curl", "-s", "--max-time", "30", "-o", "/dev/null", "-w", "%{http_code}", centralPom(v))
+      .proc("curl", "-q", "-s", "--proto", "=https", "--max-time", "30", "-o", "/dev/null", "-w", "%{http_code}", centralPom(v))
       .call(check = false)
       .out
       .trim()

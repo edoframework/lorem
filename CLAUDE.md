@@ -13,7 +13,8 @@ make repo-guard        # Maven Central only: no other repository, every dev.taih
 make mima              # binary compatibility with the newest 5.x release tag on Maven Central
 make test              # ./mill __.test.testForked (JS tests run under Node)
 make publish-dry-run   # the bundle Maven Central would receive, written to out/
-make release-prepare TYPE=patch|minor|major   # then review RELEASE_x_y_z.md
+make release-prepare TYPE=patch|minor|major EMBARGO=0|1   # then review RELEASE_x_y_z.md;
+                       # EMBARGO=1 when the ticket has the label embargo (read it with fude first)
 make release-finalize  # GitHub Packages and the read-back: only with the maintainer's yes
 make release-github    # after the push: the bundle on an immutable GitHub Release
 ```

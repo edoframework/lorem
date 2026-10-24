@@ -171,7 +171,7 @@ SIGNATURE_CHECK = ( set -eo pipefail; N=0; \
 # uploading it again for GitHub Packages would give other signature bytes. The upload of such a
 # version (a security fix after its advisory, ADR 0003 section 7) belongs to the release train
 # tooling, which takes Central's own files; here it is refused.
-CENTRAL_GUARD = CODE=$$(curl -s --max-time 30 -o /dev/null -w '%{http_code}' "https://repo1.maven.org/maven2/$(firstword $(CENTRAL_PATHS))/$$VERSION/" || true); \
+CENTRAL_GUARD = CODE=$$(curl -q -s --proto '=https' --max-time 30 -o /dev/null -w '%{http_code}' "https://repo1.maven.org/maven2/$(firstword $(CENTRAL_PATHS))/$$VERSION/" || true); \
 	case "$$CODE" in \
 		404) ;; \
 		200) echo "[ERROR] $$VERSION is on Maven Central already: it is never signed or uploaded a second time from here"; exit 1;; \
@@ -245,7 +245,7 @@ repo-guard:
 	mapfile -t POMS < "$$T/poms"; \
 	python3 -I scripts/release.py pins "$${POMS[@]}" | sort -u > "$$T/pins"; \
 	while read -r A V; do \
-		CODE=$$(curl -s --max-time 30 -o /dev/null -w '%{http_code}' "https://repo1.maven.org/maven2/dev/taihei/$$A/$$V/" || true); \
+		CODE=$$(curl -q -s --proto '=https' --max-time 30 -o /dev/null -w '%{http_code}' "https://repo1.maven.org/maven2/dev/taihei/$$A/$$V/" || true); \
 		case "$$CODE" in \
 			200) echo "[repo-guard] dev.taihei:$$A:$$V is on Maven Central";; \
 			404) echo "[repo-guard] dev.taihei:$$A:$$V is not on Maven Central yet: it waits for the release train, and a pin moves only to a version on Central"; exit 1;; \
@@ -287,9 +287,24 @@ publishLocal:
 # right after the guard, the Mill commands that see the credentials run with --no-daemon (so no
 # client that starts a daemon in between can hand them one), and the daemon is shut down again at
 # the end, so that no process keeps the credentials. On the GitHub Packages route (ADR 0003) this
-# stays the direct Central upload for a security release under embargo.
+# is only the direct Central upload of a security release under embargo: Mill signs again here,
+# so a version that went to GitHub Packages must never come through it (the release train takes
+# that one to Central, as the same files). It refuses a version that is not in $(EMBARGO_FILE),
+# and one of whose files GitHub Packages already has.
 publish:
-	@set -e; \
+	@set -eo pipefail; \
+	$(TAG_VERSION); \
+	if [ -L "$(EMBARGO_FILE)" ] || ! [ -f "$(EMBARGO_FILE)" ] || ! grep -qxF "$$VERSION" "$(EMBARGO_FILE)"; then \
+	  echo "[publish] refused: $$VERSION is not under embargo. A release goes to GitHub Packages with release-finalize,"; \
+	  echo "          and to Maven Central with the release train, as the same signed files."; exit 1; fi; \
+	$(READ_AUTH); \
+	for P in $(CENTRAL_PATHS); do \
+	  A=$${P##*/}; \
+	  for F in "$$A-$$VERSION.pom" "$$A-$$VERSION.jar" "$$A-$$VERSION-sources.jar" "$$A-$$VERSION-javadoc.jar"; do \
+	    URL="$(GITHUB_PACKAGES_URL)/$$P/$$VERSION/$$F"; CODE=$$($(GITHUB_STATUS)); \
+	    if [ "$$CODE" != 404 ]; then echo "[publish] refused: $$P/$$VERSION/$$F answers HTTP $$CODE on GitHub Packages, not 404"; exit 1; fi; \
+	  done; \
+	done; \
 	$(STRAY_GUARD); \
 	./mill shutdown >/dev/null 2>&1 || true; \
 	trap './mill shutdown >/dev/null 2>&1 || true' EXIT; \
@@ -333,7 +348,7 @@ release-preflight:
 	$(MODULE_GUARD); \
 	FOUND=""; \
 	for P in $(CENTRAL_PATHS); do \
-	  CODE=$$(curl -s --max-time 30 -o /dev/null -w '%{http_code}' "https://repo1.maven.org/maven2/$$P/$$VERSION/" || true); \
+	  CODE=$$(curl -q -s --proto '=https' --max-time 30 -o /dev/null -w '%{http_code}' "https://repo1.maven.org/maven2/$$P/$$VERSION/" || true); \
 	  case "$$CODE" in \
 	    200) FOUND="$$FOUND $$P";; \
 	    404) ;; \
@@ -501,7 +516,7 @@ release-github:
 
 # ---------------------------------------------------------------------------
 # Release
-# Usage: make release-prepare TYPE=patch|minor|major [EMBARGO=1]
+# Usage: make release-prepare TYPE=patch|minor|major EMBARGO=0|1
 #        (review RELEASE_x_y_z.md)
 #        make release-finalize   (notes commit, local tag, preflight, the signed bundle, its upload
 #                                 to GitHub Packages and the read-back; the push is yours)
@@ -528,9 +543,11 @@ release-github:
 release-prepare:
 	@set -e; \
 	if [ -z "$(TYPE)" ]; then \
-		echo "[ERROR] Usage: make release-prepare TYPE=patch|minor|major [EMBARGO=1]"; exit 1; \
+		echo "[ERROR] Usage: make release-prepare TYPE=patch|minor|major EMBARGO=0|1"; exit 1; \
 	fi; \
-	case "$(EMBARGO)" in ""|1) ;; *) echo "[ERROR] EMBARGO is 1 (a security fix whose advisory is not published yet) or unset"; exit 1;; esac; \
+	case "$(EMBARGO)" in 0|1) ;; *) \
+		echo "[ERROR] EMBARGO=1 for a security fix whose advisory is not published yet (the ticket's label embargo),"; \
+		echo "        EMBARGO=0 for every other release: it is decided at each release, never a default"; exit 1;; esac; \
 	$(STRAY_GUARD); \
 	if [ -n "$$(git status --porcelain | grep -v '^??')" ]; then \
 		echo "[ERROR] Uncommitted changes:"; git status --short | grep -v '^??'; exit 1; \
@@ -544,7 +561,7 @@ release-prepare:
 	if [ "$$CURRENT" != "0.0.0" ]; then \
 		if [ "$$(printf '%s\n' "$$CURRENT" "$(FIRST_RELEASE)" | sort -V | head -n1)" != "$(FIRST_RELEASE)" ]; then P="$(LEGACY_CENTRAL_PATH)"; \
 		else P="$(firstword $(CENTRAL_PATHS))"; fi; \
-		CODE=$$(curl -s --max-time 30 -o /dev/null -w '%{http_code}' "https://repo1.maven.org/maven2/$$P/$$CURRENT/" || true); \
+		CODE=$$(curl -q -s --proto '=https' --max-time 30 -o /dev/null -w '%{http_code}' "https://repo1.maven.org/maven2/$$P/$$CURRENT/" || true); \
 		case "$$CODE" in \
 			200) echo "[OK] v$$CURRENT is on Maven Central";; \
 			404) echo "[ERROR] v$$CURRENT is not on Maven Central yet: it waits for the release train. At most one version"; \
@@ -728,7 +745,8 @@ release-finalize:
 	git tag -a "v$$NEW" -m "Release $$NEW"; \
 	echo "[OK] Created local tag v$$NEW (not pushed)"; \
 	$(MAKE) release-preflight; \
-	EMBARGOED=$$(python3 -I -c 'import json, sys; print("yes" if json.load(open(sys.argv[1])).get("embargo") else "no")' "$(RELEASE_STATE)"); \
+	EMBARGOED=$$(python3 -I -c 'import json, sys; e = json.load(open(sys.argv[1])).get("embargo"); print({True: "yes", False: "no"}[e]) if isinstance(e, bool) else sys.exit(1)' "$(RELEASE_STATE)") || { \
+		echo "[ERROR] the release state does not say embargo true or false (prepared before this machinery?): make release-abort, then release-prepare again"; exit 1; }; \
 	if [ "$$EMBARGOED" = yes ]; then \
 		$(MAKE) publish; \
 		rm -f $(RELEASE_STATE); \
