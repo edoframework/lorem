@@ -1,8 +1,8 @@
 package dev.taihei.mihon
 
 import java.security.SecureRandom
-import java.time.{LocalDate, ZoneId}
-import java.util.UUID
+import java.time.{Clock, LocalDate}
+import java.util.{Random, UUID}
 
 import dev.taihei.mihon.sources.*
 import dev.taihei.tsuji.Language
@@ -11,26 +11,30 @@ import dev.taihei.tsuji.Language
  * Fake data for tests, seed data and mock-ups: filler text, people, contact details, addresses,
  * dates, files and ids.
  *
- * Every generator returns a fresh value drawn from a `java.security.SecureRandom`, so output is
- * not reproducible; assert on its shape, never on a value. The exceptions are [[today]],
- * [[yesterday]] and [[tomorrow]], which follow the UTC calendar date.
+ * A generator draws every value from its own random number generator and reads today's date from
+ * its own clock; there is no global generator and no wall clock. Create one with
+ * [[LoremIpsum.seeded]] for values that repeat from run to run, or with [[LoremIpsum.secure]] for
+ * values that do not.
+ *
+ * One instance may be shared across threads: it stays thread-safe, but which thread gets which
+ * value then depends on scheduling, so the values are no longer reproducible.
  *
  * {{{
  * import dev.taihei.mihon.LoremIpsum
  *
- * LoremIpsum.name  // "Olivia Hernandez"
- * LoremIpsum.email // "olivia.hernandez@brightwavehub.example"
+ * val lorem = LoremIpsum.secure()
+ * lorem.name  // "Olivia Hernandez"
+ * lorem.email // "olivia.hernandez@brightwavehub.example"
+ *
+ * val fixed = LoremIpsum.seeded(42L)
+ * fixed.name  // the same name on every run, on the JVM and on Scala.js
  * }}}
  */
-object LoremIpsum:
-  private val random = new SecureRandom()
+final class LoremIpsum private (random: Random, clock: Clock):
 
-  /** Every language taihei-tsuji knows. */
-  def languages: Array[Language] = Language.values
-
-  /** One of [[languages]], each equally likely. */
+  /** One of the languages taihei-tsuji knows (`Language.values`), each equally likely. */
   def language: Language =
-    val values = languages
+    val values = Language.values
     values(random.nextInt(values.length))
 
   /**
@@ -42,7 +46,8 @@ object LoremIpsum:
   def int(bound: Int): Int = 1 + random.nextInt(bound)
 
   /**
-   * A random long in `[1, bound]`, each value equally likely; never 0.
+   * A random long in `[1, bound]`, each value equally likely; never 0. The bound is an `Int`, so
+   * the result is at most `Int.MaxValue`.
    *
    * @throws IllegalArgumentException
    *   when `bound` is not positive
@@ -53,16 +58,25 @@ object LoremIpsum:
    * A random double in `[0, bound)`.
    *
    * @throws IllegalArgumentException
-   *   when `bound` is not positive
+   *   when `bound` is not positive and finite
    */
-  def double(bound: Double): Double = random.nextDouble(bound)
+  def double(bound: Double): Double =
+    if !(bound > 0.0 && bound < Double.PositiveInfinity) then
+      throw new IllegalArgumentException(s"bound must be positive and finite: $bound")
+    // nextDouble() alone: its algorithm is specified, so a seed gives the same value on every
+    // platform; the bounded variant of newer JDKs is not.
+    val r = random.nextDouble() * bound
+    if r < bound then r else Math.nextDown(bound)
 
   /**
    * `f` applied to `1, 2, …, n` for a random `n` in `[1, bound]`: between one and `bound` items.
    *
    * {{{
-   * LoremIpsum.times(10, _ => LoremIpsum.name) // one to ten names
+   * lorem.times(10, _ => lorem.name) // one to ten names
    * }}}
+   *
+   * @throws IllegalArgumentException
+   *   when `bound` is not positive
    */
   def times[A](bound: Int, f: Int => A): List[A] = (1 to int(bound)).map(f.apply).toList
 
@@ -89,13 +103,13 @@ object LoremIpsum:
     s"$street ${int(100)}, $zipCode $city"
 
   /** An international city name, often in its native script. */
-  def city: String = Cities()
+  def city: String = Cities(random)
 
   /** Four decimal digits, each 0 to 9. */
   def zipCode: String = (1 to 4).map(_ => digit).mkString
 
   /** `https://` and a domain under the reserved `.example` top-level domain (RFC 2606). */
-  def url: String = s"https://${DomainNames()}"
+  def url: String = s"https://${DomainNames(random)}"
 
   /**
    * `first.last@domain`, the name parts reduced to ASCII letters, digits and `_+&*-`, the domain
@@ -104,21 +118,24 @@ object LoremIpsum:
   def email: String =
     val sanitizedFirst = sanitizeForEmail(firstName)
     val sanitizedLast  = sanitizeForEmail(lastName)
-    s"$sanitizedFirst.$sanitizedLast@${DomainNames()}"
+    s"$sanitizedFirst.$sanitizedLast@${DomainNames(random)}"
 
   private def sanitizeForEmail(name: String): String =
-    name.replaceAll("[^a-zA-Z0-9_+&*-]", "").toLowerCase
+    name.replaceAll("[^a-zA-Z0-9_+&*-]", "").toLowerCase(java.util.Locale.ROOT)
 
   /** One Lorem Ipsum word. */
-  def word: String = Lorem()
+  def word: String = Lorem(random)
 
-  /** One printable character. */
-  def character: String = Characters()
+  /** One printable ASCII character: a letter, a digit or one of `!@#$%^&*()_+-=[]{}|;:,.<>?`. */
+  def character: String = Characters(random)
 
   /** One to ten filler words, separated by a space. */
   def words: String = times(10, _ => word).mkString(" ")
 
-  /** Thirty random [[character]]s. */
+  /**
+   * Thirty random [[character]]s. Fake data, not a credential: from a seeded generator it is
+   * predictable.
+   */
   def password: String = (1 to 30).map(_ => character).mkString
 
   /** One to ten filler words, capitalized and ending in a full stop. */
@@ -133,8 +150,15 @@ object LoremIpsum:
   /** Filler text, the same as [[sentences]]. */
   def description: String = sentences
 
-  /** A random UUID with `_` instead of `-`. */
-  def id: String = UUID.randomUUID().toString.replace("-", "_")
+  /**
+   * A random version-4 UUID with `_` instead of `-`, drawn from this generator, so a seeded one is
+   * reproducible. Not unique across generators with the same seed.
+   */
+  def id: String =
+    // Version 4 (random) and the IETF variant, as UUID.randomUUID sets them.
+    val msb = (random.nextLong() & ~0xf000L) | 0x4000L
+    val lsb = (random.nextLong() & 0x3fffffffffffffffL) | Long.MinValue
+    new UUID(msb, lsb).toString.replace("-", "_")
 
   /** One to five capitalized filler words. */
   def title: String = times(5, _ => word.capitalize).mkString(" ")
@@ -146,23 +170,23 @@ object LoremIpsum:
   def name: String = s"$firstName $lastName"
 
   /** A male or a female first name, each equally likely. */
-  def firstName: String = if bool then MaleNames() else FemaleNames()
+  def firstName: String = if bool then MaleNames(random) else FemaleNames(random)
 
   /** A surname. */
-  def lastName: String = Surnames()
+  def lastName: String = Surnames(random)
 
   /** `+32` and nine decimal digits, each 0 to 9. */
   def phone: String = "+32" + (1 to 9).map(_ => digit).mkString
 
   /** An international country name, often in its native script. */
-  def country: String = Countries()
+  def country: String = Countries(random)
 
   /** A random date: year in `[1, 3000]`, any month, day of month in `[1, 28]`. */
   def localDate: LocalDate =
     LocalDate.of(int(3000), int(12), int(28))
 
-  /** Today's date in UTC. Not random. */
-  def today: LocalDate = LocalDate.now(ZoneId.of("UTC"))
+  /** Today's date by this generator's clock, in the clock's time zone. Not random. */
+  def today: LocalDate = LocalDate.now(clock)
 
   /** The day before [[today]]. Not random. */
   def yesterday: LocalDate = today.minusDays(1)
@@ -177,12 +201,49 @@ object LoremIpsum:
   def pastDate: LocalDate = today.minusWeeks(long(1000))
 
   /** A file extension with its leading dot, such as `.pdf`. */
-  def fileExtension: String = FileExtensions()
+  def fileExtension: String = FileExtensions(random)
 
   /** A file extension without the dot, such as `pdf`. */
-  def fileExtensionWithoutDot: String = FileExtensions().filterNot(Set('.'))
+  def fileExtensionWithoutDot: String = FileExtensions(random).filterNot(Set('.'))
 
   /** A MIME type, such as `application/pdf`. */
-  def mimeType: String = MimeTypes()
+  def mimeType: String = MimeTypes(random)
+
+end LoremIpsum
+
+/** Creates [[LoremIpsum]] generators. */
+object LoremIpsum:
+
+  /**
+   * A generator whose values repeat: the same seed, clock and mihon version give the same values,
+   * in the same order, on the JVM and on Scala.js. A minor release may change the values for a
+   * seed (a new word, a changed list); assert on the values of a seed only within one version.
+   *
+   * {{{
+   * import java.time.{Clock, Instant, ZoneOffset}
+   *
+   * val clock = Clock.fixed(Instant.parse("2026-10-24T12:00:00Z"), ZoneOffset.UTC)
+   * val lorem = LoremIpsum.seeded(42L, clock)
+   * lorem.today // 2026-10-24
+   * }}}
+   *
+   * @param seed
+   *   the seed of the generator's `java.util.Random`
+   * @param clock
+   *   where [[LoremIpsum.today]] and the dates relative to it come from; the system clock in UTC by
+   *   default
+   */
+  def seeded(seed: Long, clock: Clock = Clock.systemUTC()): LoremIpsum =
+    new LoremIpsum(new Random(seed), clock)
+
+  /**
+   * A generator whose values do not repeat, drawn from a `java.security.SecureRandom`.
+   *
+   * @param clock
+   *   where [[LoremIpsum.today]] and the dates relative to it come from; the system clock in UTC by
+   *   default
+   */
+  def secure(clock: Clock = Clock.systemUTC()): LoremIpsum =
+    new LoremIpsum(new SecureRandom(), clock)
 
 end LoremIpsum

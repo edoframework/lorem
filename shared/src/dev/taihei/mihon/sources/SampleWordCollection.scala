@@ -1,10 +1,13 @@
 package dev.taihei.mihon.sources
 
-import java.security.SecureRandom
+import java.util.Random
 
-// A list of words of which `apply()` returns one at random.
+// A list of words of which `apply(random)` returns one, drawn from the caller's generator so that a
+// seeded LoremIpsum stays reproducible.
 private[mihon] trait SampleWordCollection:
-  private val random = new SecureRandom()
   lazy val words: List[String]
 
-  final def apply(): String = words(random.nextInt(words.length))
+  // An IndexedSeq, so that a draw from a list of a thousand names is not a walk along it.
+  private lazy val indexed: IndexedSeq[String] = words.toIndexedSeq
+
+  final def apply(random: Random): String = indexed(random.nextInt(indexed.length))
