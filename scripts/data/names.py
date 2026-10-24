@@ -2,7 +2,7 @@
 
 - en: the U.S. Census Bureau's 1990 first-name lists and 2010 surname list (17 U.S.C. 105).
 - la: classical Roman praenomina and nomina, historical facts written here.
-- the other languages: Wikidata (CC0), see wikinames.py."""
+- the other languages: Wikidata (CC0)."""
 
 import csv
 import io

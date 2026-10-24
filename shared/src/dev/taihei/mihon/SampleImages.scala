@@ -5,7 +5,7 @@ package dev.taihei.mihon
  * prefix. They are constants, not random.
  *
  * {{{
- * val src = s"data:image/png;base64,${SampleImages.landscape}" // for an <img> in a mock-up
+ * val src = s"data:image/png;base64,\${SampleImages.landscape}" // for an <img> in a mock-up
  * }}}
  */
 object SampleImages:

@@ -4,9 +4,9 @@
   "separator": ", ",
   "postalCode": "#####",
   "regions": [
+    ["California", 12711],
     ["New York", 11237],
     ["Texas", 9865],
-    ["California", 8813],
     ["Arizona", 3685],
     ["Illinois", 2746],
     ["North Carolina", 2172],
@@ -26,19 +26,20 @@
     ["Massachusetts", 675],
     ["Oregon", 652],
     ["Michigan", 639],
-    ["Louisiana", 610],
     ["New Jersey", 603],
     ["Florida", 592],
     ["Kentucky", 568],
     ["New Mexico", 564],
     ["Georgia", 498],
     ["Kansas", 397],
+    ["Louisiana", 383],
     ["Hawaii", 350],
     ["Alaska", 291],
     ["Idaho", 235]
   ],
   "cities": [
     {"name": "New York City", "weight": 8804, "region": "New York"},
+    {"name": "Los Angeles", "weight": 3898, "region": "California"},
     {"name": "Chicago", "weight": 2746, "region": "Illinois"},
     {"name": "Houston", "weight": 2304, "region": "Texas"},
     {"name": "Phoenix", "weight": 1608, "region": "Arizona"},
@@ -136,8 +137,7 @@
     {"name": "Boise", "weight": 235, "region": "Idaho"},
     {"name": "Fremont", "weight": 230, "region": "California"},
     {"name": "Spokane", "weight": 228, "region": "Washington"},
-    {"name": "Santa Clarita", "weight": 228, "region": "California"},
-    {"name": "Baton Rouge", "weight": 227, "region": "Louisiana"}
+    {"name": "Santa Clarita", "weight": 228, "region": "California"}
   ],
   "streets": ["{number} {family} Street", "{number} {family} Avenue", "{number} {family} Road", "{number} {given} Drive", "{number} Main Street", "{number} Oak Street", "{number} Maple Avenue", "{number} Park Avenue", "{number} Pine Street", "{number} Cedar Lane", "{number} Elm Street", "{number} Lake Drive", "{number} Hill Road", "{number} Washington Street", "{number} Lincoln Avenue"],
   "phone": "+1 %## 555-01##",

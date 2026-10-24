@@ -35,8 +35,8 @@ final private[mihon] case class TextFile(
   words: List[(String, Int)])
 
 // <tag>/names.json: a name in its own script, romanised (`latin`, absent when the name is in
-// Latin script), reduced to ASCII for e-mail addresses (`ascii`, absent when `latin` is ASCII
-// already), and its kana reading (`reading`, Japanese only).
+// Latin script), reduced to ASCII for e-mail addresses (`ascii`, absent when it equals
+// `latin`), and its kana reading (`reading`, Japanese only).
 final private[mihon] case class FormEntry(
   name: String,
   latin: Option[String],

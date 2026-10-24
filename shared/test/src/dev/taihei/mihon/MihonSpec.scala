@@ -128,6 +128,10 @@ object MihonSpec extends ZIOSpecDefault:
         val countries = many(3000)(en.country).toSet
         assertTrue(countries.contains("Belgium"), countries.contains("Japan"), countries.size > 200)
       },
+      test("American cities include the five largest, Los Angeles among them") {
+        val cities = many(3000)(en.city).toSet
+        assertTrue(Set("New York City", "Los Angeles", "Chicago", "Houston", "Phoenix").subsetOf(cities))
+      },
       test("city, street and postalCode are not empty") {
         assertTrue(en.city.nonEmpty, en.street.nonEmpty, en.postalCode.nonEmpty)
       },

@@ -18,7 +18,7 @@ A Wikidata result is cached under a hash of its query, so a changed query asks a
 | --- | --- |
 | `languages.py` | the languages, their default countries, punctuation, separators and name order |
 | `text.py` | `text.json`: words from Tatoeba, filtered, with weights; the capitals of the initials |
-| `names.py`, `wikinames.py`, `romanize.py` | `names.json`: given and family names with their romanised, ASCII and kana forms |
+| `names.py` | `names.json`: given and family names with their romanised and ASCII forms |
 | `cldr.py` | `countries.json` and the quotation marks |
 | `places.py`, `formats.py` | `country-<CC>.json`: cities and regions, and the hand-written address formats |
 
@@ -33,7 +33,8 @@ A Wikidata result is cached under a hash of its query, so a changed query asks a
 - `<tag>/names.json`: `order` (`given-family` or `family-given`), `separator`, and the lists
   `female`, `male` and `family` of `{name, weight, latin?, ascii?, reading?}`; a family name may
   have a `female` form `{name, latin?, ascii?, reading?}`. `latin` is absent when the name is in
-  Latin script, `ascii` when the latin form is ASCII already.
+  Latin script; `ascii`, the form an e-mail address is built from, is absent when it equals
+  `latin`.
 - `<tag>/countries.json`: `[code, name]` for every country, sorted by code.
 - `<tag>/country-<CC>.json`: `code`, `lines` (templates with `{street}`, `{city}`, `{region}`,
   `{postalCode}`, `{country}`), `separator`, `postalCode` (a pattern), `regions` (`[name, weight]`),

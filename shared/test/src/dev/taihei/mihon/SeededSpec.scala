@@ -36,7 +36,7 @@ object SeededSpec extends ZIOSpecDefault:
       "Virginia Wood",
       "-",
       "charles.white@lunarbytefusion.example",
-      "180 Cedar Lane, Chicago, Illinois 77233, United States",
+      "180 Cedar Lane, Greensboro, North Carolina 77233, United States",
       "+1 737 555-0154",
       "Father City Soup",
       "and",

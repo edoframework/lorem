@@ -7,6 +7,10 @@ from common import sparql
 # The class of a country's first-level subdivisions, for the formats that name a region.
 REGION_CLASS = {"US": "Q35657", "BR": "Q485258", "IN": "Q131541"}
 
+# Cities whose Wikidata class the settlement filter misses (Los Angeles is only a "charter city"),
+# taken in with their population like the others.
+EXTRA = {"US": ["Q65"]}
+
 
 def _largest(country, qid, threshold):
     # The population filter first, then the class: the other way round times out.
@@ -34,6 +38,10 @@ def cities(country, qid, lang, ok, limit=100):
         if len(rows) >= limit * 1.5:
             break
     pops = {r["item"]: int(float(r["pop"])) for r in rows}
+    if country in EXTRA:
+        extra = sparql(f"cities-extra-{country}", """SELECT ?item (MAX(?p) AS ?pop) WHERE {
+            VALUES ?item { %s } ?item wdt:P1082 ?p } GROUP BY ?item""" % " ".join("wd:" + q for q in EXTRA[country]))
+        pops.update({r["item"]: int(float(r["pop"])) for r in extra})
     values = " ".join("wd:" + i.rsplit("/", 1)[1] for i in pops)
     region_class = REGION_CLASS.get(country)
     region = ""
