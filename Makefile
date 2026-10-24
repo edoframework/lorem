@@ -140,7 +140,8 @@ READ_AUTH = if [ ! -f "$(READ_CREDENTIALS)" ] || [ -L "$(READ_CREDENTIALS)" ]; t
 
 # Needs DIR, a Maven tree. Every .asc in it verifies, made by the release key (gpg's VALIDSIG
 # names the primary key's fingerprint, whatever the locale), and there are exactly SIGNATURES.
-# A subshell: it fails as a whole, so the caller can say what follows.
+# A subshell, so the caller can say what follows a refusal. Called on the left of ||, where bash
+# ignores set -e: every step that can fail must exit 1 itself, as each one here does.
 SIGNATURE_CHECK = ( set -eo pipefail; N=0; \
 	ASCS=$$(find "$$DIR" -type f -name '*.asc' | LC_ALL=C sort); \
 	while IFS= read -r A; do \
@@ -370,7 +371,8 @@ release-bundle:
 		echo "[bundle] refused; nothing left the machine. Fix the cause, then make release-abort and prepare again"; exit 1; }; \
 	DIR="$$B.partial/repository"; \
 	$(SIGNATURE_CHECK) || { echo "[bundle] refused; nothing left the machine. Fix the cause, then make release-abort and prepare again"; exit 1; }; \
-	mv -T -- "$$B.partial" "$$B"; \
+	if [ -e "$$B" ] || [ -L "$$B" ]; then echo "[bundle] $$B appeared while it was built"; exit 1; fi; \
+	mv -- "$$B.partial" "$$B"; \
 	echo "[bundle] $$B"; \
 	echo "[bundle] $$(cat "$$B/$(BUNDLE_PREFIX)-$$VERSION.zip.sha256")"
 

@@ -3,8 +3,10 @@
 # make validate): scripts/release.py, and publish-github, verify-github, release-abort and the
 # embargo in the Makefile, run against scripts/fake_registry.py on localhost. A throwaway git
 # repository holds a copy of the Makefile and scripts/, tagged v9.9.9, with a synthetic bundle
-# (no Mill, no signing key): what is tested is what the targets do with a bundle, the tokens and
-# the registry's answers. One line per check; exits non-zero when any check fails.
+# signed by throwaway keys (no Mill, never the release key): what is tested is what the targets do
+# with a bundle, its signatures, the tokens and the registry's answers. The Central check asks
+# repo1.maven.org about version 9.9.9, so the test needs the network. One line per check; exits
+# non-zero when any check fails.
 set -uo pipefail
 
 HERE=$(cd "$(dirname "$0")" && pwd)

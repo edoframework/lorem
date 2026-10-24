@@ -105,6 +105,8 @@ object release extends Module {
         val from   = if (exactTag && clean) "HEAD^" else "HEAD"
         // Only a root commit has no HEAD^; any other git failure (a shallow clone, say) must not
         // pass as "no baseline".
+        if (git("rev-parse", "--is-shallow-repository").out.trim() != "false")
+          sys.error("a shallow clone (or git failed): fetch the full history and the tags, or set MIMA_BASELINE")
         val hasFrom = gitAt(root, "rev-parse", "-q", "--verify", s"$from^{commit}").exitCode == 0
         if (!hasFrom && from == "HEAD") sys.error("git cannot read HEAD: no MiMa baseline")
         val listed = git("tag", "--merged", from, "--list", "v[0-9]*", "--sort=-v:refname")
